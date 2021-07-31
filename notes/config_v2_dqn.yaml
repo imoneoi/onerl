@@ -1,0 +1,48 @@
+env:
+  include: onerl.examples.atari_env
+  name: AtariDeepmind
+  args:
+    - BreakoutNoFrameskip-v4
+  frame_stack: 1
+
+algorithm:
+  name: DQN
+  network:
+    include: onerl.network
+    feature_extractor:
+      name: PreactResnet
+  hyperparameters:
+    replay_buffer_size: 1000000
+
+    lr: 0.001
+    batch_size: 32
+    gamma: 0.99
+
+    target_update_freq: 500
+
+    eps_start: 1.0
+    eps_final: 0.05
+    eps_final_steps: 1000000
+
+nodes:
+  Env:
+    num: 8
+  Policy:
+    num: 1
+    batch_size: 32
+    devices:
+      - cuda:0
+  Optimizer:
+    num: 1
+    devices:
+      - cuda:0
+
+  # system nodes
+  Scheduler:
+    num: 1
+  ReplayBuffer:
+    num: 1
+  Logger:
+    num: 1
+  Validator:
+    num: 1

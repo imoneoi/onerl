@@ -1,0 +1,47 @@
+env:
+  include: gym
+  name: make
+  args:
+    - HalfCheetah-v3
+  frame_stack: 1
+
+algorithm:
+  name: SAC
+  network:
+    include: onerl.network
+    feature_extractor:
+      name: PreactResnet
+    actor:
+      name: MLP
+    critic:
+      name: MLP
+  hyperparameters:
+    replay_buffer_size: 1000000
+
+    lr_actor: 0.0003
+    lr_critic: 0.0003
+    lr_alpha: 0.0003
+    gamma: 0.99
+    tau: 0.005
+
+nodes:
+  Env:
+    num: 8
+  Policy:
+    num: 1
+    devices:
+      - cuda:0
+  Optimizer:
+    num: 1
+    devices:
+      - cuda:0
+
+  # system nodes
+  Scheduler:
+    num: 1
+  ReplayBuffer:
+    num: 1
+  Logger:
+    num: 1
+  Validator:
+    num: 1

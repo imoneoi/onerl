@@ -1,0 +1,67 @@
+import multiprocessing as mp
+import ctypes
+import pickle
+
+import torch
+
+from onerl.nodes.node import Node
+from onerl.nodes.optimizer_node import OptimizerNode
+
+
+class PolicyNode(Node):
+    def run(self):
+        self.dummy_init()
+
+        # allocate device
+        devices = self.config["devices"]
+        device = devices[self.node_rank % len(devices)]
+        # load policy
+        policy = OptimizerNode.create_model(self.global_config).to(device)
+        policy.eval()
+
+        policy_version = -1
+        new_policy_state = None
+        # queue
+        batch_size = self.config["batch_size"]
+        batch = torch.zeros((batch_size, *self.global_config["env"]["obs_shape"]),
+                            dtype=self.global_config["env"]["obs_dtype"],
+                            device=device)
+        while True:
+            # fetch new version
+            self.setstate("update_policy")
+            optimizer_name = self.get_node_name("Optimizer", 0)
+
+            self.global_objects[optimizer_name]["update_lock"].acquire()
+            new_version = self.global_objects[optimizer_name]["update_version"]
+            if new_version > policy_version:
+                new_policy_state = pickle.loads(self.global_objects[optimizer_name]["update_state"])
+            self.global_objects[optimizer_name]["update_lock"].release()
+
+            if new_policy_state is not None:
+                policy.load_state_dict(new_policy_state)
+
+                policy_version = new_version
+                new_policy_state = None
+
+            # recv request
+            self.setstate("wait_request")
+
+            env_queue = []
+            self.send(self.get_node_name("Scheduler", 0), self.node_name)  # clear scheduler queue
+            while len(env_queue) < batch_size:
+                env_queue.append(self.recv())
+
+            # copy tensor & infer
+            self.setstate("copy_obs")
+            for idx, env_name in enumerate(env_queue):
+                batch[idx] = self.global_objects[env_name]["obs"].get_torch()
+
+            self.setstate("infer")
+            with torch.no_grad():
+                act = policy(batch)
+
+            # copy back
+            self.setstate("copy_back")
+            for idx, env_name in enumerate(env_queue):
+                self.global_objects[env_name]["act"].get_torch()[:] = act[idx].cpu()
+                self.send(env_name, "")

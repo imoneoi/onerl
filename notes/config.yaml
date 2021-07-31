@@ -1,0 +1,49 @@
+launch_envs:
+  name: Env
+  n: 8
+  config:
+    env:
+      include: gym
+      class: make
+      args:
+        - HalfCheetah-v3
+    frame_stack: 1
+
+launch_policies:
+  name: Policy
+  n: 2
+  config:
+    devices:
+      - cuda:0
+
+launch_replaybuffer:
+  name: ReplayBuffer
+  config:
+    size: 1000000
+
+launch_optimizer:
+  name: Optimizer
+  n: 1
+  config:
+    devices:
+      - cuda:0
+    net:
+      include: onerl.net.continous
+      class: MLP
+      args:
+        hidden_sizes: 256,256
+
+    lr_actor: 0.0003
+    lr_critic: 0.0003
+    lr_alpha: 0.0003
+    gamma: 0.99
+    tau: 0.005
+
+# System nodes
+launch_logger:
+  name: Logger
+  config:
+    path: logs/
+
+launch_validator:
+  name: Validator
