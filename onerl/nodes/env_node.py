@@ -1,8 +1,8 @@
 import multiprocessing as mp
-import importlib
 
 import numpy as np
 
+from onerl.utils.import_module import get_class_from_str
 from onerl.nodes.node import Node
 from onerl.utils.shared_array import SharedArray
 
@@ -52,12 +52,8 @@ class EnvNode(Node):
     @staticmethod
     def create_env(global_config: dict):
         env_config = global_config["env"]
-        if "import" in env_config:
-            module = importlib.import_module(env_config["import"])
-        else:
-            module = globals()
-        env_class = module[env_config["name"]]
-        env = env_class(*env_config.get("args", []), **env_config.get("kwargs", {}))
+        env_class = get_class_from_str(env_config.get("import", ""), env_config["name"])
+        env = env_class(**env_config.get("params", {}))
         return env
 
     def run(self):
