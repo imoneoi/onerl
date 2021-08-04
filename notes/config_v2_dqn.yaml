@@ -1,17 +1,18 @@
 env:
-  include: onerl.examples.atari_env
+  import: onerl.examples.atari_env
   name: AtariDeepmind
-  args:
-    - BreakoutNoFrameskip-v4
-  frame_stack: 1
+  params:
+    game: Breakout
+  frame_stack: 4
 
 algorithm:
+  import: onerl.algorithm
   name: DQN
   network:
-    include: onerl.network
     feature_extractor:
+      import: onerl.network
       name: PreactResnet
-  hyperparameters:
+  params:
     replay_buffer_size: 1000000
 
     lr: 0.001
@@ -34,6 +35,7 @@ nodes:
       - cuda:0
   Optimizer:
     num: 1
+    update_interval: 5.0  # seconds
     devices:
       - cuda:0
 

@@ -16,7 +16,7 @@ class PolicyNode(Node):
         devices = self.config["devices"]
         device = devices[self.node_rank % len(devices)]
         # load policy
-        policy = OptimizerNode.create_model(self.global_config).to(device)
+        policy = OptimizerNode.create_algo(self.global_config).to(device)
         policy.eval()
 
         policy_version = -1
@@ -32,7 +32,7 @@ class PolicyNode(Node):
             optimizer_name = self.get_node_name("Optimizer", 0)
 
             self.global_objects[optimizer_name]["update_lock"].acquire()
-            new_version = self.global_objects[optimizer_name]["update_version"]
+            new_version = self.global_objects[optimizer_name]["update_version"].value
             if new_version > policy_version:
                 new_policy_state = pickle.loads(self.global_objects[optimizer_name]["update_state"])
             self.global_objects[optimizer_name]["update_lock"].release()
