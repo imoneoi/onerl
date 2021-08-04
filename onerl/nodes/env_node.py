@@ -1,16 +1,15 @@
-import multiprocessing as mp
-
 import numpy as np
 
 from onerl.utils.import_module import get_class_from_str
 from onerl.nodes.node import Node
 from onerl.utils.shared_array import SharedArray
+from onerl.utils.batch.shared import BatchShared
 
 
 class EnvNode(Node):
     @staticmethod
-    def node_preprocess_global_config(global_config: dict):
-        super().node_preprocess_global_config(global_config)
+    def node_preprocess_global_config(node_class: str, num: int, global_config: dict):
+        super().node_preprocess_global_config(node_class, num, global_config)
 
         # create sample env
         sample_env = EnvNode.create_env(global_config)
@@ -28,12 +27,12 @@ class EnvNode(Node):
             global_config["env"]["act_shape"] = sample_env.action_space.shape
             global_config["env"]["act_dtype"] = sample_env.action_space.dtype
             global_config["env"]["act_max"] = sample_env.action_space.high
-            assert (sample_env.action_space.low == -sample_env.action_space.high).all(), \
+            assert np.isclose(sample_env.action_space.low, -sample_env.action_space.high).all(), \
                 "Action range must be symmetric"
 
     @staticmethod
-    def node_create_shared_objects(num: int, global_config: dict):
-        objects = super().node_create_shared_objects(num, global_config)
+    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
+        objects = super().node_create_shared_objects(node_class, num, global_config)
         for obj in objects:
             # env
             obj["obs"] = SharedArray((global_config["env"]["frame_stack"], *global_config["env"]["obs_shape"]),
@@ -41,11 +40,12 @@ class EnvNode(Node):
             obj["act"] = SharedArray(global_config["env"]["act_shape"], global_config["env"]["act_dtype"])
 
             # log to replay
-            obj["log_sem"] = mp.BoundedSemaphore(1)
-            obj["log_obs"] = SharedArray(global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"])
-            obj["log_rew"] = SharedArray((1, ), dtype=np.float32)
-            obj["log_done"] = SharedArray((1, ), dtype=np.bool)
-            obj["log_obs_next"] = SharedArray(global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"])
+            obj["log"] = BatchShared({
+                "obs": (global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"]),
+                "rew": ((1, ), np.float32),
+                "done": ((1, ), np.bool_),
+                "obs_next": (global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"])
+            })
 
         return objects
 
@@ -81,13 +81,13 @@ class EnvNode(Node):
             obs_next, rew, done, _ = env.step(shared["act"])
             # log
             self.setstate("log_wait")
-            shared["log_sem"].acquire()
+            self.objects["log"].wait_ready()
 
             self.setstate("log_copy")
-            shared["log_obs"][:] = obs
-            shared["log_rew"][:] = rew
-            shared["log_done"][:] = done
-            shared["log_obs_next"][:] = obs_next
+            shared["log"].obs[:] = obs
+            shared["log"].rew[:] = rew
+            shared["log"].done[:] = done
+            shared["log"].obs_next[:] = obs_next
             self.send(self.get_node_name("ReplayBufferNode", 0), self.node_name)
 
             # update obs & reset
