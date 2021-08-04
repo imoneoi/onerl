@@ -25,17 +25,19 @@ class Node:
         return "{}.{}".format(node_class, node_rank)  # Naming convention
 
     @staticmethod
-    def node_preprocess_global_config(global_config: dict):
-        pass
+    def node_preprocess_global_config(node_class: str, num: int, global_config: dict):
+        global_config.setdefault("num", {})
+        global_config["num"]["node_class"] = num
 
     @staticmethod
-    def node_create_shared_objects(num: int, global_config: dict):
+    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
         # create queues
         return [{"queue": mp.SimpleQueue()} for _ in range(num)]
 
     # Node utils
-    def count_nodes(self, node_class: str):
-        return sum([name.startswith(node_class + ".") for name in self.global_objects.keys()])
+    @staticmethod
+    def node_count_by_class(node_class: str, global_config: dict):
+        return global_config["num"][node_class]
 
     # State
     def setstate(self, state: str):
