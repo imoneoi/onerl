@@ -1,2 +1,0 @@
-class SharedBatch:
-    pass
