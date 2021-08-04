@@ -33,6 +33,10 @@ class Node:
         # create queues
         return [{"queue": mp.SimpleQueue()} for _ in range(num)]
 
+    # Node utils
+    def count_nodes(self, node_class: str):
+        return sum([name.startswith(node_class + ".") for name in self.global_objects.keys()])
+
     # State
     def setstate(self, state: str):
         self.state = state
