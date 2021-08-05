@@ -13,7 +13,7 @@ class SharedArray:
         self.arr = mp.Array(ctypes.c_uint8, int(np.prod(shape) * np.dtype(dtype).itemsize), lock=False)
 
     def get(self):
-        return np.frombuffer(self.arr, dtype=self.dtype)
+        return np.frombuffer(self.arr, dtype=self.dtype).reshape(self.shape)
 
     def get_torch(self):
         # The torch Tensor and numpy array will share their underlying memory locations,
