@@ -1,4 +1,7 @@
 import multiprocessing as mp
+import torch
+
+import setproctitle
 
 
 class Node:
@@ -19,6 +22,11 @@ class Node:
 
         self.state = None
 
+        # Proc title for visualization
+        setproctitle.setproctitle("-OneRL- {}".format(self.node_name))
+        # Limit torch to 1 thread
+        torch.set_num_threads(1)
+
     # Node methods
     @staticmethod
     def get_node_name(node_class: str, node_rank: int):
@@ -27,7 +35,7 @@ class Node:
     @staticmethod
     def node_preprocess_global_config(node_class: str, num: int, global_config: dict):
         global_config.setdefault("num", {})
-        global_config["num"]["node_class"] = num
+        global_config["num"][node_class] = num
 
     @staticmethod
     def node_create_shared_objects(node_class: str, num: int, global_config: dict):
@@ -42,6 +50,7 @@ class Node:
     # State
     def setstate(self, state: str):
         self.state = state
+        # print("[{}] {}".format(self.node_name, self.state))
 
     # Queue
     def send(self, target_name: str, msg: any):
@@ -54,12 +63,15 @@ class Node:
         return not self.queue.empty()
 
     # Run
-    def dummy_init(self):
+    def init(self):
         if self.config.get("dummy", False):
             # dummy loop for debugging
             self.setstate("dummy")
-            while True:
-                self.recv()
+            self.run_dummy()
 
     def run(self):
         assert False, "Node {} run not implemented".format(self.node_name)
+
+    def run_dummy(self):
+        while True:
+            self.recv()
