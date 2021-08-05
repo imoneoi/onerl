@@ -5,6 +5,8 @@ env:
     game: Breakout
   frame_stack: 4
 
+  policy_batch_size: 32
+
 algorithm:
   import: onerl.algorithm
   name: DQN
@@ -26,13 +28,21 @@ algorithm:
     eps_final_steps: 1000000
 
 nodes:
+  # env stepping
   Env:
     num: 8
   Policy:
     num: 1
-    batch_size: 32
     devices:
       - cuda:0
+  Scheduler:
+    num: 1  # only 1
+
+  # training
+  ReplayBuffer:
+    num: 1  # only 1
+  Sampler:
+    num: 1  # num sampler = num optimizer
   Optimizer:
     num: 1
     update_interval: 5.0  # seconds
@@ -40,10 +50,7 @@ nodes:
       - cuda:0
 
   # system nodes
-  Scheduler:
-    num: 1
-  ReplayBuffer:
-    num: 1
+  # do not need to modify
   Logger:
     num: 1
   Validator:
