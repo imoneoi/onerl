@@ -1,0 +1,27 @@
+env:
+  import: gym
+  name: make
+  params:
+    id: Breakout-v4
+  frame_stack: 4
+  policy_batch_size: 8
+
+algorithm:
+  import: onerl.tests.common.random_algorithm
+  name: RandomAlgorithm
+
+nodes:
+  EnvNode:
+    num: 24
+  PolicyNode:
+    num: 3
+    devices:
+      - cuda:0
+  SchedulerNode:
+    num: 1
+  ReplayBufferNode:
+    num: 1
+    dummy: True
+  OptimizerNode:
+    num: 1
+    dummy: True
