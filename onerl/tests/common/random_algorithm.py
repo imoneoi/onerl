@@ -7,7 +7,8 @@ from onerl.utils.batch.cuda import BatchCuda
 class RandomAlgorithm(nn.Module):
     def __init__(self,
                  network: dict,
-                 env_params: dict):
+                 env_params: dict,
+                 **kwargs):
         super().__init__()
         self.env_params = env_params
 

@@ -9,6 +9,8 @@ env:
 algorithm:
   import: onerl.tests.common.random_algorithm
   name: RandomAlgorithm
+  params:
+    replay_buffer_size: 0
 
 nodes:
   EnvNode:
