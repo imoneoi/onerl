@@ -1,0 +1,2 @@
+class BatchNumpy:
+    pass

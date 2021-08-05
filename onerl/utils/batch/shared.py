@@ -1,5 +1,6 @@
 import multiprocessing as mp
 
+from onerl.utils.batch.numpy import BatchNumpy
 from onerl.utils.shared_array import SharedArray
 
 
@@ -11,7 +12,7 @@ class BatchShared:
             self.ready.acquire()
 
     def get(self):
-        obj = object()
+        obj = BatchNumpy()
         obj.__dict__.update({k: v.get() for k, v in self.data.items()})
         return obj
 
