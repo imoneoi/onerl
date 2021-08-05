@@ -19,14 +19,14 @@ class OptimizerNode(Node):
         algo_config = global_config["algorithm"]
         # create network
         network = {k: get_class_from_str(v.get("import", ""), v["name"])(**v.get("params", {}))
-                   for k, v in algo_config["network"].items()}
+                   for k, v in algo_config.get("network", {}).items()}
 
         algo_class = get_class_from_str(algo_config.get("import", ""), algo_config["name"])
-        return algo_class(network=network, **algo_config.get("params", {}))
+        return algo_class(network=network, env_params=global_config["env"], **algo_config.get("params", {}))
 
     @staticmethod
     def node_preprocess_global_config(node_class: str, num: int, global_config: dict):
-        super().node_preprocess_global_config(node_class, num, global_config)
+        Node.node_preprocess_global_config(node_class, num, global_config)
 
         # model size
         algo = OptimizerNode.create_algo(global_config)
@@ -34,18 +34,16 @@ class OptimizerNode(Node):
 
     @staticmethod
     def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = super().node_create_shared_objects(node_class, num, global_config)
+        objects = Node.node_create_shared_objects(node_class, num, global_config)
         # rank 0 only, policy update
         objects[0].update({
             "update_lock": mp.Lock(),
-            "update_version": mp.Value(ctypes.c_int64, 0, lock=False),
+            "update_version": mp.Value(ctypes.c_int64, -1, lock=False),
             "update_state": mp.Array(ctypes.c_uint8, global_config["algorithm"]["pickled_size"], lock=False)
         })
         return objects
 
     def run(self):
-        self.dummy_init()
-
         # distributed data parallel (DDP)
         # setup DDP
         # FIXME: Single machine multi-GPU setting
@@ -65,8 +63,8 @@ class OptimizerNode(Node):
         current_model_version = 0
 
         # optimizer
-        sampler_name = self.get_node_name("SamplerNode", 0)
-        batch = BatchCuda(self.global_config[sampler_name]["batch_{}".format(self.node_rank)], device)
+        sampler_name = self.get_node_name("SamplerNode", self.node_rank)
+        batch = BatchCuda(self.global_config[sampler_name]["batch"], device)
         # sample first batch
         self.send(sampler_name, self.node_rank)
 
@@ -98,3 +96,20 @@ class OptimizerNode(Node):
                     self.objects["update_lock"].release()
                     # release serialized model
                     del state_dict_str
+
+    def run_dummy(self):
+        dummy_train_time = self.config.get("dummy_train_time", 0.1)
+
+        sampler_name = self.get_node_name("SamplerNode", 0)
+        if sampler_name in self.global_objects:
+            batch = self.global_objects[sampler_name]["batch_{}".format(self.node_rank)]
+            while True:
+                self.setstate("dummy_wait_batch")
+                batch.wait_ready()
+                self.send(sampler_name, self.node_rank)
+
+                self.setstate("dummy_train")
+                time.sleep(dummy_train_time)
+        else:
+            while True:
+                self.recv()

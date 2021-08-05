@@ -9,7 +9,7 @@ from onerl.utils.batch.shared import BatchShared
 class EnvNode(Node):
     @staticmethod
     def node_preprocess_global_config(node_class: str, num: int, global_config: dict):
-        super().node_preprocess_global_config(node_class, num, global_config)
+        Node.node_preprocess_global_config(node_class, num, global_config)
 
         # create sample env
         sample_env = EnvNode.create_env(global_config)
@@ -32,7 +32,7 @@ class EnvNode(Node):
 
     @staticmethod
     def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = super().node_create_shared_objects(node_class, num, global_config)
+        objects = Node.node_create_shared_objects(node_class, num, global_config)
         for obj in objects:
             # env
             obj["obs"] = SharedArray((global_config["env"]["frame_stack"], *global_config["env"]["obs_shape"]),
@@ -43,8 +43,7 @@ class EnvNode(Node):
             obj["log"] = BatchShared({
                 "obs": (global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"]),
                 "rew": ((1, ), np.float32),
-                "done": ((1, ), np.bool_),
-                "obs_next": (global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"])
+                "done": ((1, ), np.bool_)
             })
 
         return objects
@@ -57,10 +56,13 @@ class EnvNode(Node):
         return env
 
     def run(self):
-        self.dummy_init()
-
         # acquire shared objects
-        shared = {k: v.get() for k, v in self.objects.items()}
+        shared_obs = self.objects["obs"].get()
+        shared_act = self.objects["act"].get()
+        shared_log = self.objects["log"].get()
+
+        # discrete action type
+        is_discrete = "act_n" in self.global_config["env"]
 
         # create and reset env
         env = self.create_env(self.global_config)
@@ -68,8 +70,8 @@ class EnvNode(Node):
         while True:
             # copy obs to shared mem
             self.setstate("copy_obs")
-            shared["obs"][:-1] = shared["obs"][1:]
-            shared["obs"][-1] = obs
+            shared_obs[:-1] = shared_obs[1:]
+            shared_obs[-1] = obs
 
             # request act
             self.setstate("request_act")
@@ -78,16 +80,15 @@ class EnvNode(Node):
 
             # step env
             self.setstate("step")
-            obs_next, rew, done, _ = env.step(shared["act"])
+            obs_next, rew, done, _ = env.step(shared_act[0] if is_discrete else shared_act)
             # log
             self.setstate("log_wait")
             self.objects["log"].wait_ready()
 
             self.setstate("log_copy")
-            shared["log"].obs[:] = obs
-            shared["log"].rew[:] = rew
-            shared["log"].done[:] = done
-            shared["log"].obs_next[:] = obs_next
+            shared_log.obs[:] = obs
+            shared_log.rew[:] = rew
+            shared_log.done[:] = done
             self.send(self.get_node_name("ReplayBufferNode", 0), self.node_name)
 
             # update obs & reset
@@ -95,3 +96,6 @@ class EnvNode(Node):
             if done:
                 self.setstate("reset")
                 obs = env.reset()
+
+    def run_dummy(self):
+        assert False, "EnvNode cannot be dummy"
