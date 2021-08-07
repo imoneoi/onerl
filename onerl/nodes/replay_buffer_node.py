@@ -20,52 +20,54 @@ class ReplayBufferNode(Node):
         single_size = total_size // num_buffers
         # create buffers
         objects[0].update({
-            "buffer": [
-                BatchShared({
-                    "obs": ((single_size, *global_config["env"]["obs_shape"]), global_config["env"]["obs_dtype"]),
-                    "rew": ((single_size, ), np.float32),
-                    "done": ((single_size, ), np.bool_)
-                }) for _ in range(num_buffers)
-            ],
-            "size": [mp.Value(ctypes.c_int64, lock=False) for _ in range(num_buffers)],
-            "idx": [mp.Value(ctypes.c_int64, lock=False) for _ in range(num_buffers)],
-            "lock": [mp.Lock() for _ in range(num_buffers)]
+            "buffer": BatchShared({
+                "obs": ((num_buffers, single_size, *global_config["env"]["obs_shape"]),
+                        global_config["env"]["obs_dtype"]),
+                "rew": ((num_buffers, single_size, ), np.float32),
+                "done": ((num_buffers, single_size, ), np.bool_)
+            }),
+            "size": SharedArray(num_buffers, dtype=np.int64),
+            "idx": SharedArray(num_buffers, dtype=np.int64),
+            "lock": mp.Lock()
         })
         return objects
 
     def run(self):
         # shared array
-        shared_buffer = [item.get() for item in self.objects["buffer"]]
-        shared_size = self.objects["size"]
-        shared_idx = self.objects["idx"]
+        shared_buffer = self.objects["buffer"].get()
+        shared_size = self.objects["size"].get()
+        shared_idx = self.objects["idx"].get()
         shared_lock = self.objects["lock"]
         # shared (remote)
         shared_env_log = {int(k[len("EnvNode."):]): v["log"].get()
                           for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
 
         # event loop
-        buffer_keys = list(shared_buffer[0].__dict__.keys())
-        single_buffer_size = shared_buffer[0].__dict__[buffer_keys[0]].shape[0]
+        buffer_keys = list(shared_buffer.__dict__.keys())
+        single_buffer_size = shared_buffer.__dict__[buffer_keys[0]].shape[1]
         while True:
+            self.setstate("wait_msg")
             env_name = self.recv()
             env_id = int(env_name[len("EnvNode."):])
+
             # idx & size
+            self.setstate("copy_buffer")
             idx = shared_idx[env_id]
             size = shared_size[env_id]
-
             # copy buffer
             for k in buffer_keys:
-                shared_buffer[env_id].__dict__[k][idx.value] = shared_env_log[env_id].__dict__[k]
+                shared_buffer.__dict__[k][env_id, idx] = shared_env_log[env_id].__dict__[k]
             self.global_objects[env_name]["log"].set_ready()
 
             # move index
-            new_idx = (idx.value + 1) % single_buffer_size
-            new_size = min(single_buffer_size, size.value + 1)
+            self.setstate("move_index")
+            new_idx = (idx + 1) % single_buffer_size
+            new_size = min(single_buffer_size, size + 1)
 
-            shared_lock[env_id].acquire()
-            idx.value = new_idx
-            size.value = new_size
-            shared_lock[env_id].release()
+            shared_lock.acquire()
+            shared_idx[env_id] = new_idx
+            shared_size[env_id] = new_size
+            shared_lock.release()
 
     def run_dummy(self):
         while True:

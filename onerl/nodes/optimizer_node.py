@@ -66,7 +66,7 @@ class OptimizerNode(Node):
         sampler_name = self.get_node_name("SamplerNode", self.node_rank)
         batch = BatchCuda(self.global_config[sampler_name]["batch"], device)
         # sample first batch
-        self.send(sampler_name, self.node_rank)
+        self.send(sampler_name, "")
 
         while True:
             # wait & copy batch
@@ -75,7 +75,7 @@ class OptimizerNode(Node):
             self.setstate("copy_batch")
             batch.copy_from()
             # notify to sample
-            self.send(sampler_name, self.node_rank)
+            self.send(sampler_name, "")
 
             # optimize
             self.setstate("optimize")
