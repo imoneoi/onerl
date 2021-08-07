@@ -100,13 +100,15 @@ class OptimizerNode(Node):
     def run_dummy(self):
         dummy_train_time = self.config.get("dummy_train_time", 0.1)
 
-        sampler_name = self.get_node_name("SamplerNode", 0)
+        sampler_name = self.get_node_name("SamplerNode", self.node_rank)
         if sampler_name in self.global_objects:
-            batch = self.global_objects[sampler_name]["batch_{}".format(self.node_rank)]
+            shared_batch = self.global_objects[sampler_name]["batch"]
+
+            self.send(sampler_name, "")
             while True:
                 self.setstate("dummy_wait_batch")
-                batch.wait_ready()
-                self.send(sampler_name, self.node_rank)
+                shared_batch.wait_ready()
+                self.send(sampler_name, "")
 
                 self.setstate("dummy_train")
                 time.sleep(dummy_train_time)
