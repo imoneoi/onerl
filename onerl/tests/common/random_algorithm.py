@@ -14,6 +14,7 @@ class RandomAlgorithm(nn.Module):
 
     def forward(self, obs: torch.Tensor):
         if "act_n" in self.env_params:
+            # discrete action space
             return torch.randint(0, self.env_params["act_n"], (obs.shape[0], ))
         else:
             # uniform -act_max ... act_max
