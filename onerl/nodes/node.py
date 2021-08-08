@@ -1,4 +1,7 @@
 import multiprocessing as mp
+import time
+import os
+
 import torch
 
 import setproctitle
@@ -20,7 +23,12 @@ class Node:
         self.objects = self.global_objects[self.node_name]
         self.queue = self.objects["queue"]
 
-        self.state = None
+        # State & profiling
+        self.is_profile = global_config.get("profile", False)
+        if self.is_profile:
+            profile_log_filename = os.path.join(global_config["profile_log_path"], self.node_name)
+            self.profile_stream = open(profile_log_filename, "wb",
+                                       buffering=global_config.get("profile_log_buffer", 1048576))
 
         # Proc title for visualization
         setproctitle.setproctitle("-OneRL- {}".format(self.node_name))
@@ -49,8 +57,8 @@ class Node:
 
     # State
     def setstate(self, state: str):
-        self.state = state
-        # print("[{}] {}".format(self.node_name, self.state))
+        if self.is_profile:
+            self.profile_stream.write(time.time_ns().to_bytes(8, "big") + state.encode() + b"\0")
 
     # Queue
     def send(self, target_name: str, msg: any):

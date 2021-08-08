@@ -1,3 +1,6 @@
+profile: True
+profile_log_path: profile_log
+
 env:
   import: gym
   name: make
