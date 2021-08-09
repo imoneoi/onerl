@@ -52,7 +52,7 @@ class SamplerNode(Node):
         protect_range = self.config.get("protect_range", 10) + frame_stack
 
         # warm start
-        self.setstate("warm_start")
+        self.setstate("start")
         while True:
             # atomic copy idx
             shared_lock.acquire()
@@ -64,10 +64,10 @@ class SamplerNode(Node):
         # event loop
         while True:
             # wait request
-            self.setstate("wait_request")
+            self.setstate("wait")
             self.recv()
 
-            self.setstate("calc_idx")
+            self.setstate("calc_index")
             # copy batch (lock-free)
             # atomic copy idx
             shared_lock.acquire()

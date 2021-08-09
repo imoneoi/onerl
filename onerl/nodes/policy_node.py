@@ -42,7 +42,7 @@ class PolicyNode(Node):
                 new_policy_state = None
 
             # recv request
-            self.setstate("wait_request")
+            self.setstate("wait")
 
             env_queue = []
             self.send(self.get_node_name("SchedulerNode", 0), self.node_name)  # clear scheduler queue
@@ -54,12 +54,12 @@ class PolicyNode(Node):
             for idx, env_name in enumerate(env_queue):
                 batch[idx] = self.global_objects[env_name]["obs"].get_torch()
 
-            self.setstate("infer")
+            self.setstate("step")
             with torch.no_grad():
                 act = policy(batch)
 
             # copy back
-            self.setstate("copy_back")
+            self.setstate("copy_act")
             for idx, env_name in enumerate(env_queue):
                 self.global_objects[env_name]["act"].get_torch()[:] = act[idx].cpu()
                 self.send(env_name, "")

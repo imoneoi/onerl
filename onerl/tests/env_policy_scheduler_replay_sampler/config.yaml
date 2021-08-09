@@ -7,7 +7,7 @@ env:
   params:
     id: Breakout-v4
   frame_stack: 4
-  policy_batch_size: 8
+  policy_batch_size: 4
 
 algorithm:
   import: onerl.tests.common.random_algorithm
@@ -18,7 +18,7 @@ algorithm:
 
 nodes:
   EnvNode:
-    num: 16
+    num: 32
   PolicyNode:
     num: 2
     devices:

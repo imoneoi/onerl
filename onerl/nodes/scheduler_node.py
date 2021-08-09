@@ -13,10 +13,10 @@ class SchedulerNode(Node):
         msg_queue_policy = []
         # event loop
         while True:
-            self.setstate("wait_msg")
+            self.setstate("wait")
             msg = self.recv()
 
-            self.setstate("process_msg")
+            self.setstate("step")
             # push queue
             if msg.startswith("EnvNode."):
                 msg_queue_env.append(msg)

@@ -46,12 +46,12 @@ class ReplayBufferNode(Node):
         buffer_keys = list(shared_buffer.__dict__.keys())
         single_buffer_size = shared_buffer.__dict__[buffer_keys[0]].shape[1]
         while True:
-            self.setstate("wait_msg")
+            self.setstate("wait")
             env_name = self.recv()
             env_id = int(env_name[len("EnvNode."):])
 
             # idx & size
-            self.setstate("copy_buffer")
+            self.setstate("copy")
             idx = shared_idx[env_id]
             size = shared_size[env_id]
             # copy buffer

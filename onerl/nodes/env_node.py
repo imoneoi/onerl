@@ -74,7 +74,7 @@ class EnvNode(Node):
             shared_obs[-1] = obs
 
             # request act
-            self.setstate("request_act")
+            self.setstate("wait_act")
             self.send(self.get_node_name("SchedulerNode", 0), self.node_name)
             self.recv()
 
@@ -82,10 +82,10 @@ class EnvNode(Node):
             self.setstate("step")
             obs_next, rew, done, _ = env.step(shared_act[0] if is_discrete else shared_act)
             # log
-            self.setstate("log_wait")
+            self.setstate("wait_log")
             self.objects["log"].wait_ready()
 
-            self.setstate("log_copy")
+            self.setstate("copy_log")
             shared_log.obs[:] = obs
             shared_log.rew[:] = rew
             shared_log.done[:] = done

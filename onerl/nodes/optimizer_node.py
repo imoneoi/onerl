@@ -70,15 +70,15 @@ class OptimizerNode(Node):
 
         while True:
             # wait & copy batch
-            self.setstate("wait_batch")
+            self.setstate("wait")
             batch.wait_ready()
-            self.setstate("copy_batch")
+            self.setstate("copy")
             batch.copy_from()
             # notify to sample
             self.send(sampler_name, "")
 
             # optimize
-            self.setstate("optimize")
+            self.setstate("step")
             model.learn(batch)
 
             # update (if needed)
@@ -106,11 +106,11 @@ class OptimizerNode(Node):
 
             self.send(sampler_name, "")
             while True:
-                self.setstate("dummy_wait_batch")
+                self.setstate("wait")
                 shared_batch.wait_ready()
                 self.send(sampler_name, "")
 
-                self.setstate("dummy_train")
+                self.setstate("step")
                 time.sleep(dummy_train_time)
         else:
             while True:
