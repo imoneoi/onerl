@@ -61,7 +61,7 @@ class PolicyNode(Node):
             # copy back
             self.setstate("copy_act")
             for idx, env_name in enumerate(env_queue):
-                self.global_objects[env_name]["act"].get_torch()[:] = act[idx].cpu()
+                self.global_objects[env_name]["act"].get_torch().copy_(act[idx].cpu())
                 self.send(env_name, "")
 
     def run_dummy(self):

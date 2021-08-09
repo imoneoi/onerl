@@ -19,4 +19,4 @@ class SharedArray:
         # The torch Tensor and numpy array will share their underlying memory locations,
         # and changing one will change the other.
         # https://pytorch.org/tutorials/beginner/former_torchies/tensor_tutorial.html
-        return torch.tensor(self.get())
+        return torch.from_numpy(self.get())
