@@ -31,31 +31,30 @@ class NoopResetEnv(gym.Wrapper):
         return obs
 
 
-class MaxAndSkipEnv(gym.Wrapper):
-    """Return only every `skip`-th frame (frameskipping) using most recent raw
-    observations (for max pooling across time steps)
+class NoRewardDoneEnv(gym.Wrapper):
+    """Resets when no reward for a long time, avoiding emulator glitches"""
 
-    :param gym.Env env: the environment to wrap.
-    :param int skip: number of `skip`-th frame.
-    """
-
-    def __init__(self, env, skip=4):
+    def __init__(self, env, tolerance=None):
         super().__init__(env)
-        self._skip = skip
+        self._tolerance = tolerance
+        self._no_reward_time = 0
+
+    def reset(self):
+        self._no_reward_time = 0
+        return self.env.reset()
 
     def step(self, action):
-        """Step the environment with the given action. Repeat action, sum
-        reward, and max over last observations.
-        """
-        obs_list, total_reward, done = [], 0., False
-        for i in range(self._skip):
-            obs, reward, done, info = self.env.step(action)
-            obs_list.append(obs)
-            total_reward += reward
-            if done:
-                break
-        max_frame = np.max(obs_list[-2:], axis=0)
-        return max_frame, total_reward, done, info
+        obs, reward, done, info = self.env.step(action)
+
+        if np.isclose(reward, 0):
+            self._no_reward_time += 1
+            if (self._tolerance is not None) and (self._no_reward_time >= self._tolerance):
+                done = True
+                print("no rew done!")
+        else:
+            self._no_reward_time = 0
+
+        return obs, reward, done, info
 
 
 class EpisodicLifeEnv(gym.Wrapper):
@@ -115,7 +114,7 @@ class FireResetEnv(gym.Wrapper):
         return self.env.step(1)[0]
 
 
-class WarpFrameCustom(gym.ObservationWrapper):
+class WarpFrame(gym.ObservationWrapper):
     """Warp frames to 224x160
 
     :param gym.Env env: the environment to wrap.
@@ -123,7 +122,7 @@ class WarpFrameCustom(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.size = 224, 160
+        self.size = 84, 84
         self.observation_space = gym.spaces.Box(
             low=np.min(env.observation_space.low),
             high=np.max(env.observation_space.high),
@@ -150,35 +149,25 @@ class ClipRewardEnv(gym.RewardWrapper):
         return np.sign(reward)
 
 
-def create_atari_env(name, episode_life=True, clip_rewards=True,
-                     frame_stack=4, time_limit=9000):  # ~10min gameplay / episode
-    """Configure environment for DeepMind-style Atari. The observation is
-    channel-first: (c, h, w) instead of (h, w, c).
+def create_atari_env(
+        name: str,
+        episode_life: bool = True,
+        clip_rewards: bool = True,
+        warp_frame: bool = True,
+        no_reward_max_frames: int = 5 * 60 * (60 // 4)  # 5 minutes
+):
+    env = gym.make("{}Deterministic-v4".format(name))
+    env = NoopResetEnv(env, noop_max=1 * (60 // 4))
 
-    :param str env_id: the atari environment id.
-    :param bool episode_life: wrap the episode life wrapper.
-    :param bool clip_rewards: wrap the reward clipping wrapper.
-    :param int frame_stack: wrap the frame stacking wrapper.
-    :param bool scale: wrap the scaling observation wrapper.
-    :param bool warp_frame: wrap the grayscale + resize observation wrapper.
-    :return: the wrapped atari environment.
-    """
-    assert 'NoFrameskip' in env_id
-    env = gym.make(env_id)
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
+    if no_reward_max_frames is not None:
+        env = NoRewardDoneEnv(env, no_reward_max_frames)
     if episode_life:
         env = EpisodicLifeEnv(env)
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     if warp_frame:
-        env = WarpFrameCustom(env)
-    if scale:
-        env = ScaledFloatFrame(env)
+        env = WarpFrame(env)
     if clip_rewards:
         env = ClipRewardEnv(env)
-    if frame_stack:
-        env = FrameStack(env, frame_stack)
 
-    env = gym.wrappers.TimeLimit(env, time_limit)
     return env

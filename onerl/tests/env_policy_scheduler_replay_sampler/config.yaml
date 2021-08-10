@@ -2,12 +2,12 @@ profile: True
 profile_log_path: profile_log
 
 env:
-  import: gym
-  name: make
+  import: examples.atari_env
+  name: create_atari_env
   params:
-    id: Breakout-v4
+    name: MontezumaRevenge
   frame_stack: 4
-  policy_batch_size: 4
+  policy_batch_size: 16
 
 algorithm:
   import: onerl.tests.common.random_algorithm
@@ -18,9 +18,9 @@ algorithm:
 
 nodes:
   EnvNode:
-    num: 32
+    num: 16
   PolicyNode:
-    num: 2
+    num: 1
     devices:
       - cuda:0
   SchedulerNode:
@@ -32,3 +32,5 @@ nodes:
   OptimizerNode:
     num: 1
     dummy: True
+  VisualizerNode:
+    num: 1
