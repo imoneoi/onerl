@@ -8,7 +8,9 @@ from onerl.nodes.node import Node
 class VisualizerNode(Node):
     def run(self):
         # shared obs
-        shared_obs = [v["log"].data["obs"].get() for k, v in self.global_objects.items() if k.startswith("EnvNode.")]
+        node_env_prefix = "{}@EnvNode.".format(self.node_ns)
+        shared_obs = [v["log"].data["obs"].get() for k, v in self.global_objects.items()
+                      if k.startswith(node_env_prefix)]
 
         # settings
         vis_delay = self.config.get("vis_delay", 1)

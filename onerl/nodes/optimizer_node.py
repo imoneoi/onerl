@@ -15,31 +15,31 @@ from onerl.nodes.node import Node
 
 class OptimizerNode(Node):
     @staticmethod
-    def create_algo(global_config):
-        algo_config = global_config["algorithm"]
+    def create_algo(ns_config: dict):
+        algo_config = ns_config["algorithm"]
         # create network
         network = {k: get_class_from_str(v.get("import", ""), v["name"])(**v.get("params", {}))
                    for k, v in algo_config.get("network", {}).items()}
 
         algo_class = get_class_from_str(algo_config.get("import", ""), algo_config["name"])
-        return algo_class(network=network, env_params=global_config["env"], **algo_config.get("params", {}))
+        return algo_class(network=network, env_params=ns_config["env"], **algo_config.get("params", {}))
 
     @staticmethod
-    def node_preprocess_global_config(node_class: str, num: int, global_config: dict):
-        Node.node_preprocess_global_config(node_class, num, global_config)
+    def node_preprocess_ns_config(node_class: str, num: int, ns_config: dict):
+        Node.node_preprocess_ns_config(node_class, num, ns_config)
 
         # model size
-        algo = OptimizerNode.create_algo(global_config)
-        global_config["algorithm"]["pickled_size"] = len(pickle.dumps(algo.state_dict()))
+        algo = OptimizerNode.create_algo(ns_config)
+        ns_config["algorithm"]["pickled_size"] = len(pickle.dumps(algo.state_dict()))
 
     @staticmethod
-    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = Node.node_create_shared_objects(node_class, num, global_config)
+    def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
+        objects = Node.node_create_shared_objects(node_class, num, ns_config)
         # rank 0 only, policy update
         objects[0].update({
             "update_lock": mp.Lock(),
             "update_version": mp.Value(ctypes.c_int64, -1, lock=False),
-            "update_state": mp.Array(ctypes.c_uint8, global_config["algorithm"]["pickled_size"], lock=False)
+            "update_state": mp.Array(ctypes.c_uint8, ns_config["algorithm"]["pickled_size"], lock=False)
         })
         return objects
 
@@ -50,12 +50,12 @@ class OptimizerNode(Node):
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = self.config.get("port", "12355")
         dist.init_process_group("nccl", rank=self.node_rank,
-                                world_size=self.node_count_by_class(self.node_class, self.global_config))
+                                world_size=self.node_count(self.node_class, self.ns_config))
         # allocate device
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
         # model
-        model = self.create_algo(self.global_config).to(device)
+        model = self.create_algo(self.ns_config).to(device)
         model = DistributedDataParallel(model, device_ids=[device])
 
         # updater
@@ -63,10 +63,10 @@ class OptimizerNode(Node):
         current_model_version = 0
 
         # optimizer
-        sampler_name = self.get_node_name("SamplerNode", self.node_rank)
-        batch = BatchCuda(self.global_config[sampler_name]["batch"], device)
+        node_sampler = self.find("SamplerNode", self.node_rank)
+        batch = BatchCuda(self.ns_config[node_sampler]["batch"], device)
         # sample first batch
-        self.send(sampler_name, "")
+        self.send(node_sampler, "")
 
         while True:
             # wait & copy batch
@@ -75,7 +75,7 @@ class OptimizerNode(Node):
             self.setstate("copy")
             batch.copy_from()
             # notify to sample
-            self.send(sampler_name, "")
+            self.send(node_sampler, "")
 
             # optimize
             self.setstate("step")
@@ -96,22 +96,3 @@ class OptimizerNode(Node):
                     self.objects["update_lock"].release()
                     # release serialized model
                     del state_dict_str
-
-    def run_dummy(self):
-        dummy_train_time = self.config.get("dummy_train_time", 0.1)
-
-        sampler_name = self.get_node_name("SamplerNode", self.node_rank)
-        if sampler_name in self.global_objects:
-            shared_batch = self.global_objects[sampler_name]["batch"]
-
-            self.send(sampler_name, "")
-            while True:
-                self.setstate("wait")
-                shared_batch.wait_ready()
-                self.send(sampler_name, "")
-
-                self.setstate("step")
-                time.sleep(dummy_train_time)
-        else:
-            while True:
-                self.recv()

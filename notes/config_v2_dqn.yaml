@@ -27,7 +27,7 @@ algorithm:
     eps_final: 0.05
     eps_final_steps: 1000000
 
-nodes:
+nodes@train:
   # env stepping
   Env:
     num: 8
@@ -38,6 +38,18 @@ nodes:
   Scheduler:
     num: 1  # only 1
 
+nodes@test:
+  Env:
+    num: 1
+    param:
+      clip_rewards: False
+  Policy:
+    num: 1
+    devices: [cuda:0]
+  Scheduler:
+    num: 1
+
+nodes@global:
   # training
   ReplayBuffer:
     num: 1  # only 1
@@ -46,8 +58,7 @@ nodes:
   Optimizer:
     num: 1
     update_interval: 5.0  # seconds
-    devices:
-      - cuda:0
+    devices: [cuda:0]
 
   # system nodes
   # do not need to modify

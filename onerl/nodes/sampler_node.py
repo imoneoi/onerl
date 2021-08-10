@@ -6,18 +6,18 @@ from onerl.utils.batch.shared import BatchShared
 
 class SamplerNode(Node):
     @staticmethod
-    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = Node.node_create_shared_objects(node_class, num, global_config)
+    def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
+        objects = Node.node_create_shared_objects(node_class, num, ns_config)
 
-        assert Node.node_count_by_class("OptimizerNode", global_config) == num, \
+        assert Node.node_count("OptimizerNode", ns_config) == num, \
                "Number of sampler nodes must equal to number of optimizer nodes."
 
-        batch_size = global_config["algorithm"]["params"]["batch_size"]
-        frame_stack = global_config["env"]["frame_stack"] + 1
+        batch_size = ns_config["algorithm"]["params"]["batch_size"]
+        frame_stack = ns_config["env"]["frame_stack"] + 1
         for obj in objects:
             obj["batch"] = BatchShared({
-                "obs": ((batch_size, frame_stack, *global_config["env"]["obs_shape"]),
-                        global_config["env"]["obs_dtype"]),
+                "obs": ((batch_size, frame_stack, *ns_config["env"]["obs_shape"]),
+                        ns_config["env"]["obs_dtype"]),
                 "rew": ((batch_size, frame_stack), np.float32),
                 "done": ((batch_size, frame_stack), np.bool_)
             }, init_ready=False)
@@ -26,7 +26,7 @@ class SamplerNode(Node):
 
     def run(self):
         # replay buffer shared objs
-        replay_buffer_objs = self.global_objects[self.get_node_name("ReplayBufferNode", 0)]
+        replay_buffer_objs = self.global_objects[self.find("ReplayBufferNode")]
 
         # local idx & size (for lock-free)
         shared_buffer = replay_buffer_objs["buffer"].get()
@@ -45,8 +45,8 @@ class SamplerNode(Node):
         shared_batch = self.objects["batch"].get()
         batch_keys = list(shared_batch.__dict__.keys())
 
-        batch_size = self.global_config["algorithm"]["params"]["batch_size"]
-        frame_stack = self.global_config["env"]["frame_stack"] + 1
+        batch_size = self.ns_config["algorithm"]["params"]["batch_size"]
+        frame_stack = self.ns_config["env"]["frame_stack"] + 1
 
         # lock-free params
         protect_range = self.config.get("protect_range", 10) + frame_stack

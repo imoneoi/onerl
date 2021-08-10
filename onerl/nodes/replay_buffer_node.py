@@ -10,19 +10,19 @@ from onerl.utils.batch.shared import BatchShared
 
 class ReplayBufferNode(Node):
     @staticmethod
-    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = Node.node_create_shared_objects(node_class, num, global_config)
+    def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
+        objects = Node.node_create_shared_objects(node_class, num, ns_config)
 
         assert num == 1, "Only one ReplayBufferNode is supported."
         # size
-        total_size = global_config["algorithm"]["params"]["replay_buffer_size"]
-        num_buffers = Node.node_count_by_class("EnvNode", global_config)
+        total_size = ns_config["algorithm"]["params"]["replay_buffer_size"]
+        num_buffers = Node.node_count("EnvNode", ns_config)
         single_size = total_size // num_buffers
         # create buffers
         objects[0].update({
             "buffer": BatchShared({
-                "obs": ((num_buffers, single_size, *global_config["env"]["obs_shape"]),
-                        global_config["env"]["obs_dtype"]),
+                "obs": ((num_buffers, single_size, *ns_config["env"]["obs_shape"]),
+                        ns_config["env"]["obs_dtype"]),
                 "rew": ((num_buffers, single_size, ), np.float32),
                 "done": ((num_buffers, single_size, ), np.bool_)
             }),
@@ -39,8 +39,9 @@ class ReplayBufferNode(Node):
         shared_idx = self.objects["idx"].get()
         shared_lock = self.objects["lock"]
         # shared (remote)
-        shared_env_log = {int(k[len("EnvNode."):]): v["log"].get()
-                          for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
+        env_prefix = "{}@EnvNode.".format(self.node_ns)
+        shared_env_log = {int(k[len(env_prefix):]): v["log"].get()
+                          for k, v in self.global_objects.items() if k.startswith(env_prefix)}
 
         # event loop
         buffer_keys = list(shared_buffer.__dict__.keys())
@@ -48,7 +49,7 @@ class ReplayBufferNode(Node):
         while True:
             self.setstate("wait")
             env_name = self.recv()
-            env_id = int(env_name[len("EnvNode."):])
+            env_id = int(env_name[len(env_prefix):])
 
             # idx & size
             self.setstate("copy")
@@ -68,9 +69,3 @@ class ReplayBufferNode(Node):
             shared_idx[env_id] = new_idx
             shared_size[env_id] = new_size
             shared_lock.release()
-
-    def run_dummy(self):
-        while True:
-            env_name = self.recv()
-            # dummy log (no)
-            self.global_objects[env_name]["log"].set_ready()
