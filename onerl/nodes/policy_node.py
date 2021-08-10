@@ -24,6 +24,11 @@ class PolicyNode(Node):
                              *self.global_config["env"]["obs_shape"]),
                             dtype=numpy_to_torch_dtype_dict[self.global_config["env"]["obs_dtype"]],
                             device=device)
+        # shared objs
+        obs_shared = {k: v["obs"].get_torch() for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
+        act_shared = {k: v["act"].get_torch() for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
+
+        # event loop
         while True:
             # fetch new version
             self.setstate("update_policy")
@@ -52,7 +57,7 @@ class PolicyNode(Node):
             # copy tensor & infer
             self.setstate("copy_obs")
             for idx, env_name in enumerate(env_queue):
-                batch[idx] = self.global_objects[env_name]["obs"].get_torch()
+                batch[idx].copy_(obs_shared[env_name])
 
             self.setstate("step")
             with torch.no_grad():
@@ -61,7 +66,7 @@ class PolicyNode(Node):
             # copy back
             self.setstate("copy_act")
             for idx, env_name in enumerate(env_queue):
-                self.global_objects[env_name]["act"].get_torch().copy_(act[idx].cpu())
+                act_shared[env_name].copy_(act[idx])
                 self.send(env_name, "")
 
     def run_dummy(self):
