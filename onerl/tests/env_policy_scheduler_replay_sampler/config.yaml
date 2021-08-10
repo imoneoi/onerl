@@ -10,7 +10,7 @@ env:
   policy_batch_size: 16
 
 algorithm:
-  import: onerl.tests.common.random_algorithm
+  import: onerl.algorithms.random
   name: RandomAlgorithm
   params:
     replay_buffer_size: 10000

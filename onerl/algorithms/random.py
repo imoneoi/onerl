@@ -1,16 +1,15 @@
 import torch
-from torch import nn
 
+from onerl.algorithms.algorithm import Algorithm
 from onerl.utils.batch.cuda import BatchCuda
 
 
-class RandomAlgorithm(nn.Module):
+class RandomAlgorithm(Algorithm):
     def __init__(self,
                  network: dict,
                  env_params: dict,
                  **kwargs):
-        super().__init__()
-        self.env_params = env_params
+        super().__init__(network, env_params)
 
     def forward(self, obs: torch.Tensor):
         if "act_n" in self.env_params:
@@ -21,4 +20,10 @@ class RandomAlgorithm(nn.Module):
             return self.env_params["act_max"] * (torch.rand(obs.shape[0], *self.env_params["act_shape"]) * 2 - 1)
 
     def learn(self, batch: BatchCuda):
+        pass
+
+    def serialize_policy(self):
+        return None
+
+    def deserialize_policy(self, data):
         pass
