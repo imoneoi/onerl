@@ -50,6 +50,8 @@ class DDQNAlgorithm(Algorithm):
     def learn(self, batch: BatchCuda):
         # TODO: WARNING: DistributedDataParallel enabled here
         # next q
+        # TODO: target update
+        
         with torch.no_grad():
             next_obs = batch.data["obs"][1:]
             curr_next_q = self.network["critic"](self.network["feature_extractor"](next_obs))
