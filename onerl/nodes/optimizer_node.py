@@ -15,11 +15,13 @@ from onerl.nodes.node import Node
 
 class OptimizerNode(Node):
     @staticmethod
-    def create_algo(global_config):
+    def create_algo(global_config, ddp_device=None):
         algo_config = global_config["algorithm"]
         # create network
         network = {k: get_class_from_str(v.get("import", ""), v["name"])(**v.get("params", {}))
                    for k, v in algo_config.get("network", {}).items()}
+        if ddp_device is not None:
+            network = {k: DistributedDataParallel(v, device_ids=[ddp_device]) for k, v in network.items()}
 
         algo_class = get_class_from_str(algo_config.get("import", ""), algo_config["name"])
         return algo_class(network=network, env_params=global_config["env"], **algo_config.get("params", {}))
@@ -55,8 +57,7 @@ class OptimizerNode(Node):
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
         # model
-        model = self.create_algo(self.global_config).to(device)
-        model = DistributedDataParallel(model, device_ids=[device])
+        algorithm = self.create_algo(self.global_config, device).to(device)
 
         # updater
         last_update_time = time.time()
@@ -79,7 +80,7 @@ class OptimizerNode(Node):
 
             # optimize
             self.setstate("step")
-            model.learn(batch)
+            algorithm.learn(batch)
 
             # update (if needed)
             if self.node_rank == 0:
@@ -88,7 +89,7 @@ class OptimizerNode(Node):
                 if (current_time - last_update_time) >= self.config["update_interval"]:
                     self.setstate("update")
                     # serialize
-                    state_dict_str = pickle.dumps(model.state_dict())
+                    state_dict_str = pickle.dumps(algorithm.serialize_policy())
                     # update shared
                     self.objects["update_lock"].acquire()
                     self.objects["update_version"].value = current_model_version

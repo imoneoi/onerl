@@ -41,7 +41,7 @@ class PolicyNode(Node):
             self.global_objects[optimizer_name]["update_lock"].release()
 
             if new_policy_state is not None:
-                policy.load_state_dict(new_policy_state)
+                policy.deserialize_policy(new_policy_state)
 
                 policy_version = new_version
                 new_policy_state = None
