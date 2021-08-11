@@ -49,8 +49,10 @@ class DDQNAlgorithm(Algorithm):
 
     def learn(self, batch: BatchCuda):
         # TODO: WARNING: DistributedDataParallel enabled here
-        # next q
+        # TODO: prioritized replay
         # FIXME: target update
+        # next q
+
         if self.target_iter % self.target_update_freq == 0:
             self.target_network = {k: deepcopy(v) for k, v in self.network.items()}
 
