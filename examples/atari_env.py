@@ -122,16 +122,16 @@ class WarpFrame(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.size = 84, 84
+        self.size = 88, 88
         self.observation_space = gym.spaces.Box(
             low=np.min(env.observation_space.low),
             high=np.max(env.observation_space.high),
-            shape=self.size, dtype=env.observation_space.dtype)
+            shape=(1, *self.size), dtype=env.observation_space.dtype)
 
     def observation(self, frame):
         """returns the current observation from a frame"""
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        return cv2.resize(frame, self.size[::-1])  # OpenCV requires WxH shape
+        return np.expand_dims(cv2.resize(frame, self.size[::-1]), 0)  # OpenCV requires WxH shape
 
 
 class ClipRewardEnv(gym.RewardWrapper):
