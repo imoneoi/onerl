@@ -26,14 +26,14 @@ class PreactResBlock(nn.Module):
 
 class ResnetEncoder(nn.Module):
     def __init__(self,
-                 in_shape: tuple,
+                 in_channels: int,
                  num_layers: int = 3,
                  start_channels: int = 16,
                  use_bn: bool = True):
         super().__init__()
         # network architecture
         # initial conv
-        layers = [nn.Conv2d(in_shape[0], start_channels, kernel_size=3, stride=1, padding=1, bias=not use_bn)]
+        layers = [nn.Conv2d(in_channels, start_channels, kernel_size=3, stride=1, padding=1, bias=not use_bn)]
         if use_bn:
             layers.append(nn.BatchNorm2d(start_channels))
         # res blocks
@@ -48,6 +48,13 @@ class ResnetEncoder(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
     def forward(self, x):
+        # reshape N FS C H W --> N C*FS H W
+        if len(x.shape) == 5:
+            x = x.view(x.shape[0], -1, x.shape[-2], x.shape[-1])
+        # uint8 --> float
+        if x.dtype is torch.uint8:
+            x = x.to(torch.float) / 255
+
         x = self.layers(x)
         x = self.avgpool(x).view(x.shape[0], -1)
         return x
