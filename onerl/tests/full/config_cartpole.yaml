@@ -2,13 +2,13 @@ profile: True
 profile_log_path: profile_log
 
 env:
-  import: examples.atari_env
-  name: create_atari_env
+  import: gym
+  name: make
   params:
-    name: Pong
-  frame_stack: 4
+    id: CartPole-v0
+  frame_stack: 1
 
-  policy_batch_size: 32
+  policy_batch_size: 8
 
 algorithm:
   import: onerl.algorithms
@@ -16,48 +16,46 @@ algorithm:
   network:
     feature_extractor:
       import: onerl.networks
-      name: ResnetEncoder
+      name: MLP
       params:
-        use_bn: False
-        in_channels: 4
+        input_dims: 4
+        num_hidden: [64]
+        output_dims: 64
     critic:
       import: onerl.networks
       name: MLP
       params:
-        use_bn: False
         input_dims: 64
-        num_hidden: [256]
-        output_dims: 6
+        num_hidden: [64]
+        output_dims: 2
   params:
     replay_buffer_size: 1000000
 
     lr: 0.001
-    batch_size: 64
+    batch_size: 32
     gamma: 0.99
 
     target_update_freq: 100
 
     eps_start: 1.0
     eps_final: 0.05
-    eps_final_steps: 100000
+    eps_final_steps: 5000
 
 nodes:
   EnvNode:
-    num: 64
+    num: 16
   PolicyNode:
-    num: 2
-    devices: [cuda:0, cuda:1]
+    num: 1
+    devices: [cuda:0]
   SchedulerNode:
     num: 1
   ReplayBufferNode:
     num: 1
   SamplerNode:
-    num: 2
-  OptimizerNode:
-    num: 2
-    update_interval: 3.0
-    devices: [cuda:1, cuda:0]
-  MetricNode:
     num: 1
-  VisualizerNode:
+  OptimizerNode:
+    num: 1
+    update_interval: 1.0
+    devices: [cuda:0]
+  MetricNode:
     num: 1
