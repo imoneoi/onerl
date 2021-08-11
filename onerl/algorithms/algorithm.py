@@ -9,10 +9,10 @@ class Algorithm(nn.Module):
                  network: dict,
                  env_params: dict):
         super().__init__()
-        self.network = network
+        self.network = nn.ModuleDict(network)
         self.env_params = env_params
 
-    def forward(self, obs: torch.Tensor):
+    def forward(self, obs: torch.Tensor, ticks: int):
         pass
 
     def learn(self, batch: BatchCuda):

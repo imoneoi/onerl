@@ -11,7 +11,7 @@ class RandomAlgorithm(Algorithm):
                  **kwargs):
         super().__init__(network, env_params)
 
-    def forward(self, obs: torch.Tensor):
+    def forward(self, obs: torch.Tensor, ticks: int):
         if "act_n" in self.env_params:
             # discrete action space
             return torch.randint(0, self.env_params["act_n"], (obs.shape[0], ))

@@ -28,17 +28,19 @@ class PolicyNode(Node):
         obs_shared = {k: v["obs"].get_torch() for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
         act_shared = {k: v["act"].get_torch() for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
 
+        metric_shared = self.global_objects[self.get_node_name("MetricNode", 0)]
+        optimizer_shared = self.global_objects[self.get_node_name("OptimizerNode", 0)]
+
         # event loop
         while True:
             # fetch new version
             self.setstate("update_policy")
-            optimizer_name = self.get_node_name("OptimizerNode", 0)
 
-            self.global_objects[optimizer_name]["update_lock"].acquire()
-            new_version = self.global_objects[optimizer_name]["update_version"].value
+            optimizer_shared["update_lock"].acquire()
+            new_version = optimizer_shared["update_version"].value
             if new_version > policy_version:
-                new_policy_state = pickle.loads(self.global_objects[optimizer_name]["update_state"])
-            self.global_objects[optimizer_name]["update_lock"].release()
+                new_policy_state = pickle.loads(optimizer_shared["update_state"])
+            optimizer_shared["update_lock"].release()
 
             if new_policy_state is not None:
                 policy.deserialize_policy(new_policy_state)
@@ -60,8 +62,14 @@ class PolicyNode(Node):
                 batch[idx].copy_(obs_shared[env_name])
 
             self.setstate("step")
+            # get ticks
+            metric_shared["lock"].acquire()
+            ticks = metric_shared["tick"].value  # read
+            metric_shared["tick"].value = ticks + batch_size  # update
+            metric_shared["lock"].release()
+            # step
             with torch.no_grad():
-                act = policy(batch)
+                act = policy(batch, ticks)
 
             # copy back
             self.setstate("copy_act")
