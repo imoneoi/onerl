@@ -20,3 +20,6 @@ class SharedArray:
         # and changing one will change the other.
         # https://pytorch.org/tutorials/beginner/former_torchies/tensor_tutorial.html
         return torch.from_numpy(self.get())
+
+    def __repr__(self):
+        return "<SharedArray shape={}, dtype={}>".format(self.shape, self.dtype)

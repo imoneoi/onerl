@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import pprint
 
 from onerl.utils.batch.numpy import BatchNumpy
 from onerl.utils.shared_array import SharedArray
@@ -21,3 +22,6 @@ class BatchShared:
 
     def wait_ready(self):
         self.ready.acquire()
+
+    def __repr__(self):
+        return "<BatchShared: {}>".format(pprint.pformat(self.data))
