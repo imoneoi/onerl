@@ -21,7 +21,8 @@ class OptimizerNode(Node):
         network = {k: get_class_from_str(v.get("import", ""), v["name"])(**v.get("params", {}))
                    for k, v in algo_config.get("network", {}).items()}
         if ddp_device is not None:
-            network = {k: DistributedDataParallel(v, device_ids=[ddp_device]) for k, v in network.items()}
+            network = {k: DistributedDataParallel(v.to(ddp_device), device_ids=[ddp_device])
+                       for k, v in network.items()}
 
         algo_class = get_class_from_str(algo_config.get("import", ""), algo_config["name"])
         return algo_class(network=network, env_params=global_config["env"], **algo_config.get("params", {}))
@@ -32,7 +33,8 @@ class OptimizerNode(Node):
 
         # model size
         algo = OptimizerNode.create_algo(global_config)
-        global_config["algorithm"]["pickled_size"] = len(pickle.dumps(algo.state_dict()))
+        pickled_margin = 1.025
+        global_config["algorithm"]["pickled_size"] = int(len(pickle.dumps(algo.serialize_policy())) * pickled_margin)
 
     @staticmethod
     def node_create_shared_objects(node_class: str, num: int, global_config: dict):
@@ -57,7 +59,7 @@ class OptimizerNode(Node):
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
         # model
-        algorithm = self.create_algo(self.global_config, device).to(device)
+        algorithm = self.create_algo(self.global_config, device)
 
         # updater
         last_update_time = time.time()
@@ -65,7 +67,7 @@ class OptimizerNode(Node):
 
         # optimizer
         sampler_name = self.get_node_name("SamplerNode", self.node_rank)
-        batch = BatchCuda(self.global_config[sampler_name]["batch"], device)
+        batch = BatchCuda(self.global_objects[sampler_name]["batch"], device)
         # sample first batch
         self.send(sampler_name, "")
 
@@ -87,13 +89,15 @@ class OptimizerNode(Node):
                 current_model_version += 1
                 current_time = time.time()
                 if (current_time - last_update_time) >= self.config["update_interval"]:
+                    last_update_time = current_time
+
                     self.setstate("update")
                     # serialize
                     state_dict_str = pickle.dumps(algorithm.serialize_policy())
                     # update shared
                     self.objects["update_lock"].acquire()
                     self.objects["update_version"].value = current_model_version
-                    self.objects["update_state"][:] = state_dict_str
+                    self.objects["update_state"][:len(state_dict_str)] = state_dict_str
                     self.objects["update_lock"].release()
                     # release serialized model
                     del state_dict_str
