@@ -46,8 +46,7 @@ class DDQNAlgorithm(Algorithm):
 
     def forward(self, obs: torch.Tensor, ticks: int):
         with torch.no_grad():
-            feature = self.network["feature_extractor"](obs)
-            q = self.network["critic"](feature)
+            q = self.network["critic"](self.network["feature_extractor"](obs))
 
         # greedy actions
         act_greedy = torch.argmax(q, dim=-1).cpu()
@@ -65,6 +64,7 @@ class DDQNAlgorithm(Algorithm):
     def learn(self, batch: BatchCuda):
         # TODO: WARNING: DistributedDataParallel enabled here
         # TODO: prioritized replay
+        self.train()
 
         with torch.no_grad():
             next_obs = batch.data["obs"][:, 1:]
@@ -78,6 +78,8 @@ class DDQNAlgorithm(Algorithm):
         # current q
         q = self.network["critic"](self.network["feature_extractor"](batch.data["obs"][:, :-1]))
         q = q[torch.arange(q.shape[0], device=q.device), batch.data["act"][:, -2]]
+        # q mean (for visualization)
+        q_mean = torch.mean(q)
         # back prop
         loss = torch.mean((q - update_target) ** 2)
         self.optimizer.zero_grad()
@@ -86,6 +88,13 @@ class DDQNAlgorithm(Algorithm):
 
         # target update
         self.sync_weight()
+
+        return {
+            "update": 1,
+
+            "q_loss": loss.item(),
+            "q_mean": q_mean.item()
+        }
 
     def serialize_policy(self):
         # state dict of networks

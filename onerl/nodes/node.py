@@ -30,6 +30,11 @@ class Node:
             self.profile_stream = open(profile_log_filename, "wb",
                                        buffering=global_config.get("profile_log_buffer", 1048576))
 
+        # Metric
+        self.metric_node = self.get_node_name("MetricNode", 0)
+        if self.metric_node not in self.global_objects:
+            self.metric_node = None
+
         # Proc title for visualization
         setproctitle.setproctitle("-OneRL- {}".format(self.node_name))
         # Limit torch to 1 thread
@@ -83,3 +88,8 @@ class Node:
     def run_dummy(self):
         while True:
             self.recv()
+
+    # Metric
+    def log_metric(self, metric):
+        if self.metric_node is not None:
+            self.send(self.metric_node, metric)

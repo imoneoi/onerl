@@ -82,7 +82,9 @@ class OptimizerNode(Node):
 
             # optimize
             self.setstate("step")
-            algorithm.learn(batch)
+            metric = algorithm.learn(batch)
+            if metric is not None:
+                self.log_metric(metric)
 
             # update (if needed)
             if self.node_rank == 0:

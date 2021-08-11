@@ -68,6 +68,7 @@ class EnvNode(Node):
         # create and reset env
         env = self.create_env(self.global_config)
         obs = env.reset()
+        tot_reward = 0
         while True:
             # copy obs to shared mem
             self.setstate("copy_obs")
@@ -82,6 +83,7 @@ class EnvNode(Node):
             # step env
             self.setstate("step")
             obs_next, rew, done, _ = env.step(shared_act)
+            tot_reward += rew
             # log
             self.setstate("wait_log")
             self.objects["log"].wait_ready()
@@ -98,6 +100,9 @@ class EnvNode(Node):
             if done:
                 self.setstate("reset")
                 obs = env.reset()
+
+                self.log_metric({"episode_reward": tot_reward})
+                tot_reward = 0
 
     def run_dummy(self):
         assert False, "EnvNode cannot be dummy"
