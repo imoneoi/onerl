@@ -50,8 +50,10 @@ class DDQNAlgorithm(Algorithm):
     def learn(self, batch: BatchCuda):
         # TODO: WARNING: DistributedDataParallel enabled here
         # next q
-        # TODO: target update
-        
+        # FIXME: target update
+        if self.target_iter % self.target_update_freq == 0:
+            self.target_network = {k: deepcopy(v) for k, v in self.network.items()}
+
         with torch.no_grad():
             next_obs = batch.data["obs"][1:]
             curr_next_q = self.network["critic"](self.network["feature_extractor"](next_obs))
@@ -68,6 +70,7 @@ class DDQNAlgorithm(Algorithm):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        self.target_iter += 1
 
     def serialize_policy(self):
         # state dict of networks
