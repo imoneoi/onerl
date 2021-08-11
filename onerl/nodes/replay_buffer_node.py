@@ -21,10 +21,8 @@ class ReplayBufferNode(Node):
         # create buffers
         objects[0].update({
             "buffer": BatchShared({
-                "obs": ((num_buffers, single_size, *global_config["env"]["obs_shape"]),
-                        global_config["env"]["obs_dtype"]),
-                "rew": ((num_buffers, single_size, ), np.float32),
-                "done": ((num_buffers, single_size, ), np.bool_)
+                k: ((num_buffers, single_size, *batch_shape), batch_dtype)
+                for k, (batch_shape, batch_dtype) in global_config["env"]["batch"].items()
             }),
             "size": SharedArray(num_buffers, dtype=np.int64),
             "idx": SharedArray(num_buffers, dtype=np.int64),

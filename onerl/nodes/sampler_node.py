@@ -16,10 +16,8 @@ class SamplerNode(Node):
         frame_stack = global_config["env"]["frame_stack"] + 1
         for obj in objects:
             obj["batch"] = BatchShared({
-                "obs": ((batch_size, frame_stack, *global_config["env"]["obs_shape"]),
-                        global_config["env"]["obs_dtype"]),
-                "rew": ((batch_size, frame_stack), np.float32),
-                "done": ((batch_size, frame_stack), np.bool_)
+                k: ((batch_size, frame_stack, *batch_shape), batch_dtype)
+                for k, (batch_shape, batch_dtype) in global_config["env"]["batch"].items()
             }, init_ready=False)
 
         return objects

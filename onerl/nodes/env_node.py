@@ -19,7 +19,7 @@ class EnvNode(Node):
         # act
         if hasattr(sample_env.action_space, "n"):
             # discrete
-            global_config["env"]["act_shape"] = (1, )
+            global_config["env"]["act_shape"] = ()
             global_config["env"]["act_dtype"] = np.int64
             global_config["env"]["act_n"] = sample_env.action_space.n
         else:
@@ -29,6 +29,14 @@ class EnvNode(Node):
             global_config["env"]["act_max"] = sample_env.action_space.high
             assert np.isclose(sample_env.action_space.low, -sample_env.action_space.high).all(), \
                 "Action range must be symmetric"
+
+        # batch
+        global_config["env"]["batch"] = {
+            "obs": (global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"]),
+            "act": (global_config["env"]["act_shape"], global_config["env"]["act_dtype"]),
+            "rew": ((), np.float32),
+            "done": ((), np.float32)
+        }
 
     @staticmethod
     def node_create_shared_objects(node_class: str, num: int, global_config: dict):
@@ -40,11 +48,7 @@ class EnvNode(Node):
             obj["act"] = SharedArray(global_config["env"]["act_shape"], global_config["env"]["act_dtype"])
 
             # log to replay
-            obj["log"] = BatchShared({
-                "obs": (global_config["env"]["obs_shape"], global_config["env"]["obs_dtype"]),
-                "rew": ((1, ), np.float32),
-                "done": ((1, ), np.bool_)
-            })
+            obj["log"] = BatchShared(global_config["env"]["batch"])
 
         return objects
 
@@ -60,9 +64,6 @@ class EnvNode(Node):
         shared_obs = self.objects["obs"].get()
         shared_act = self.objects["act"].get()
         shared_log = self.objects["log"].get()
-
-        # discrete action type
-        is_discrete = "act_n" in self.global_config["env"]
 
         # create and reset env
         env = self.create_env(self.global_config)
@@ -80,15 +81,16 @@ class EnvNode(Node):
 
             # step env
             self.setstate("step")
-            obs_next, rew, done, _ = env.step(shared_act[0] if is_discrete else shared_act)
+            obs_next, rew, done, _ = env.step(shared_act)
             # log
             self.setstate("wait_log")
             self.objects["log"].wait_ready()
 
             self.setstate("copy_log")
-            shared_log.obs[:] = obs
-            shared_log.rew[:] = rew
-            shared_log.done[:] = done
+            np.copyto(shared_log.obs, obs)
+            np.copyto(shared_log.act, shared_act)
+            np.copyto(shared_log.rew, rew)
+            np.copyto(shared_log.done, done)
             self.send(self.get_node_name("ReplayBufferNode", 0), self.node_name)
 
             # update obs & reset
