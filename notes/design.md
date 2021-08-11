@@ -1,4 +1,12 @@
 # Basic Rules
+
+## Data format
+Image: N C H W (same as pytorch), uint8
+
+Action (discrete): int64
+
+Other float: float32
+
 ## Distributed
 - Lock-free
 - Copy-free
