@@ -1,6 +1,7 @@
 # Logs
 profile_log/
 log/
+wandb/
 
 # IDEA
 .idea
