@@ -1,0 +1,35 @@
+profile: True
+profile_log_path: profile_log
+
+env:
+  import: onerl.tests.counter.counter_env
+  name: CounterEnv
+  frame_stack: 5
+
+  policy_batch_size: 4
+
+algorithm:
+  import: onerl.tests.counter.counter_algorithm
+  name: CounterAlgorithm
+  params:
+    replay_buffer_size: 10000
+    batch_size: 32
+
+nodes:
+  EnvNode:
+    num: 4
+  PolicyNode:
+    num: 1
+    devices: [cuda:0]
+  SchedulerNode:
+    num: 1
+  ReplayBufferNode:
+    num: 1
+  SamplerNode:
+    num: 1
+  OptimizerNode:
+    num: 1
+    update_interval: 1.0
+    devices: [cuda:1]
+  MetricNode:
+    num: 1
