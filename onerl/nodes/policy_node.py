@@ -17,7 +17,6 @@ class PolicyNode(Node):
         policy.eval()
 
         policy_version = -1
-        new_policy_state = None
         # queue
         batch_size = self.global_config["env"]["policy_batch_size"]
         batch = torch.zeros((batch_size, self.global_config["env"]["frame_stack"],
@@ -36,6 +35,7 @@ class PolicyNode(Node):
             # fetch new version
             self.setstate("update_policy")
 
+            new_policy_state = None
             optimizer_shared["update_lock"].acquire()
             new_version = optimizer_shared["update_version"].value
             if new_version > policy_version:
@@ -44,9 +44,7 @@ class PolicyNode(Node):
 
             if new_policy_state is not None:
                 policy.deserialize_policy(new_policy_state)
-
                 policy_version = new_version
-                new_policy_state = None
 
             # recv request
             self.setstate("wait")
