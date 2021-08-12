@@ -36,4 +36,8 @@ class MLP(nn.Module):
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
+        if len(x.shape) == 3:
+            # N FS C --> N FS*C
+            x = x.view(x.shape[0], -1)
+
         return self.layers(x)
