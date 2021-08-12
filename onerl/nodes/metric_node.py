@@ -20,9 +20,10 @@ class MetricNode(Node):
         return objects
 
     def get_run_name(self):
+        env_name = self.global_config.get("env", {}).get("name", "")
         algo_name = self.global_config.get("algorithm", {}).get("name", "Unknown")
 
-        return "OneRL {} {}".format(algo_name, time.strftime("%H:%M %m-%d %Y"))
+        return "OneRL {} {} {}".format(env_name, algo_name, time.strftime("%H:%M %m-%d %Y"))
 
     def run(self):
         # shared objs
