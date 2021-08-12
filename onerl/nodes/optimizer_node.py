@@ -77,6 +77,7 @@ class OptimizerNode(Node):
             batch.wait_ready()
             self.setstate("copy")
             batch.copy_from()
+            torch.cuda.synchronize()  # copy is asynchronous
             # notify to sample
             self.send(sampler_name, "")
 
