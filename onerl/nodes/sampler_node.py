@@ -83,7 +83,8 @@ class SamplerNode(Node):
             # transpose --> (N_Buffer, N)
             sample_idx = sample_idx.transpose()
             # add frame stacking
-            sample_idx = np.expand_dims(sample_idx, -1) - (frame_stack - 1) + np.arange(frame_stack)
+            sample_idx = np.expand_dims(sample_idx, -1) + (np.arange(frame_stack) - (frame_stack - 1))
+            # --> (N_Buffer, N_BS, N_FS)
             # circular buffer operation
             sample_idx = (sample_idx + local_size.reshape((-1, 1, 1))) % local_size.reshape((-1, 1, 1))
 
