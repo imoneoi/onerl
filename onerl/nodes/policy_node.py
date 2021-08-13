@@ -1,5 +1,3 @@
-import pickle
-
 import torch
 
 from onerl.nodes.node import Node
@@ -19,10 +17,10 @@ class PolicyNode(Node):
         policy_version = -1
         # queue
         batch_size = self.global_config["env"]["policy_batch_size"]
-        batch = torch.zeros((batch_size, self.global_config["env"]["frame_stack"],
-                             *self.global_config["env"]["obs_shape"]),
-                            dtype=numpy_to_torch_dtype_dict[self.global_config["env"]["obs_dtype"]],
-                            device=device)
+        batch_cpu = torch.zeros((batch_size, self.global_config["env"]["frame_stack"],
+                                 *self.global_config["env"]["obs_shape"]),
+                                dtype=numpy_to_torch_dtype_dict[self.global_config["env"]["obs_dtype"]])
+        batch = torch.zeros_like(batch_cpu, device=device)
         # shared objs
         obs_shared = {k: v["obs"].get_torch() for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
         act_shared = {k: v["act"].get_torch() for k, v in self.global_objects.items() if k.startswith("EnvNode.")}
@@ -58,7 +56,8 @@ class PolicyNode(Node):
             # copy tensor & infer
             self.setstate("copy_obs")
             for idx, env_name in enumerate(env_queue):
-                batch[idx].copy_(obs_shared[env_name])
+                batch_cpu[idx] = obs_shared[env_name]
+            batch.copy_(batch_cpu)
 
             self.setstate("step")
             # get ticks
@@ -72,6 +71,7 @@ class PolicyNode(Node):
 
             # copy back
             self.setstate("copy_act")
+            act = act.cpu()
             for idx, env_name in enumerate(env_queue):
                 act_shared[env_name].copy_(act[idx])
                 self.send(env_name, "")
