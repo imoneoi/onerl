@@ -39,8 +39,5 @@ class CounterAlgorithm(Algorithm):
         assert ((batch.data["done"][:, :-1] == 1) == (batch.data["obs"][:, 1:, 1] == -1)).all()
         return {"update": 1}
 
-    def serialize_policy(self):
+    def policy_state_dict(self):
         return self.state_dict()
-
-    def deserialize_policy(self, data):
-        self.load_state_dict(data)

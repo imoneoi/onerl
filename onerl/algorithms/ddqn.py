@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from copy import deepcopy
 
 import torch
@@ -96,11 +97,12 @@ class DDQNAlgorithm(Algorithm):
             "q_mean": q_mean.item()
         }
 
-    def serialize_policy(self):
+    def policy_state_dict(self):
         # state dict of networks
-        return {k: v.module.state_dict() if hasattr(v, "module") else v.state_dict()
-                for k, v in self.network.items()}
+        result = OrderedDict()
+        for net_name, net in self.network.items():
+            net_state_dict = net.module.state_dict() if hasattr(net, "module") else net.state_dict()
+            result.update(OrderedDict({"{}.{}".format(net_name, k): v
+                                       for k, v in net_state_dict.items()}))
 
-    def deserialize_policy(self, data):
-        for k, v in self.network.items():
-            v.load_state_dict(data[k])
+        return result

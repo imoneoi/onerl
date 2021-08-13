@@ -30,20 +30,21 @@ class PolicyNode(Node):
         metric_shared = self.global_objects[self.get_node_name("MetricNode", 0)]
         optimizer_shared = self.global_objects[self.get_node_name("OptimizerNode", 0)]
 
+        # policy update
+        local_policy_state_dict = policy.policy_state_dict()
+        shared_policy_state_dict = optimizer_shared["update_state_dict"]
+        shared_policy_state_dict.start()
+
         # event loop
         while True:
-            # fetch new version
+            # fetch new version (lock free)
             self.setstate("update_policy")
-
-            new_policy_state = None
             optimizer_shared["update_lock"].acquire()
             new_version = optimizer_shared["update_version"].value
-            if new_version > policy_version:
-                new_policy_state = pickle.loads(optimizer_shared["update_state"])
             optimizer_shared["update_lock"].release()
 
-            if new_policy_state is not None:
-                policy.deserialize_policy(new_policy_state)
+            if new_version > policy_version:
+                shared_policy_state_dict.save_to(local_policy_state_dict)
                 policy_version = new_version
 
             # recv request

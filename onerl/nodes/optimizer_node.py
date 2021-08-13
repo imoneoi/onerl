@@ -9,6 +9,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
 
 from onerl.utils.import_module import get_class_from_str
+from onerl.utils.shared_state_dict import SharedStateDict
 from onerl.utils.batch.cuda import BatchCuda
 from onerl.nodes.node import Node
 
@@ -28,22 +29,15 @@ class OptimizerNode(Node):
         return algo_class(network=network, env_params=global_config["env"], **algo_config.get("params", {}))
 
     @staticmethod
-    def node_preprocess_global_config(node_class: str, num: int, global_config: dict):
-        Node.node_preprocess_global_config(node_class, num, global_config)
-
-        # model size
-        algo = OptimizerNode.create_algo(global_config)
-        pickled_margin = 1.025
-        global_config["algorithm"]["pickled_size"] = int(len(pickle.dumps(algo.serialize_policy())) * pickled_margin)
-
-    @staticmethod
     def node_create_shared_objects(node_class: str, num: int, global_config: dict):
         objects = Node.node_create_shared_objects(node_class, num, global_config)
+        # policy state dict example
+        example_policy_state_dict = OptimizerNode.create_algo(global_config).policy_state_dict()
         # rank 0 only, policy update
         objects[0].update({
             "update_lock": mp.Lock(),
             "update_version": mp.Value(ctypes.c_int64, -1, lock=False),
-            "update_state": mp.Array(ctypes.c_uint8, global_config["algorithm"]["pickled_size"], lock=False)
+            "update_state_dict": SharedStateDict(example_policy_state_dict)
         })
         return objects
 
@@ -64,6 +58,13 @@ class OptimizerNode(Node):
         # updater
         last_update_time = time.time()
         current_model_version = 0
+
+        local_update_state_dict = None
+        shared_update_state_dict = None
+        if self.node_rank == 0:
+            local_update_state_dict = algorithm.policy_state_dict()
+            shared_update_state_dict = self.objects["update_state_dict"]
+            shared_update_state_dict.start()
 
         # optimizer
         sampler_name = self.get_node_name("SamplerNode", self.node_rank)
@@ -94,16 +95,13 @@ class OptimizerNode(Node):
                 if (current_time - last_update_time) >= self.config["update_interval"]:
                     last_update_time = current_time
 
-                    self.setstate("update")
-                    # serialize
-                    state_dict_str = pickle.dumps(algorithm.serialize_policy())
-                    # update shared
+                    # update shared policy (lock free)
+                    self.setstate("update_policy")
+                    shared_update_state_dict.load_from(local_update_state_dict)
+
                     self.objects["update_lock"].acquire()
                     self.objects["update_version"].value = current_model_version
-                    self.objects["update_state"][:len(state_dict_str)] = state_dict_str
                     self.objects["update_lock"].release()
-                    # release serialized model
-                    del state_dict_str
 
     def run_dummy(self):
         dummy_train_time = self.config.get("dummy_train_time", 0.1)

@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import torch
 
 from onerl.algorithms.algorithm import Algorithm
@@ -22,8 +24,5 @@ class RandomAlgorithm(Algorithm):
     def learn(self, batch: BatchCuda):
         pass
 
-    def serialize_policy(self):
-        return None
-
-    def deserialize_policy(self, data):
-        pass
+    def policy_state_dict(self):
+        return OrderedDict()

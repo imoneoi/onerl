@@ -18,8 +18,5 @@ class Algorithm(nn.Module):
     def learn(self, batch: BatchCuda):
         pass
 
-    def serialize_policy(self):
-        pass
-
-    def deserialize_policy(self, data):
+    def policy_state_dict(self):
         pass
