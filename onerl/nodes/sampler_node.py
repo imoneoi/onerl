@@ -12,7 +12,13 @@ class SamplerNode(Node):
         assert Node.node_count_by_class("OptimizerNode", global_config) == num, \
                "Number of sampler nodes must equal to number of optimizer nodes."
 
-        batch_size = global_config["algorithm"]["params"]["batch_size"]
+        tot_batch_size = global_config["algorithm"]["params"]["batch_size"]
+        num_samplers = Node.node_count_by_class("SamplerNode", global_config)
+
+        assert (tot_batch_size % num_samplers) == 0, \
+               "Batch size must be divisible by number of samplers."
+
+        batch_size = tot_batch_size // num_samplers
         frame_stack = global_config["env"]["frame_stack"] + 1
         for obj in objects:
             obj["batch"] = BatchShared({
@@ -43,8 +49,7 @@ class SamplerNode(Node):
         shared_batch = self.objects["batch"].get()
         batch_keys = list(shared_batch.__dict__.keys())
 
-        batch_size = self.global_config["algorithm"]["params"]["batch_size"]
-        frame_stack = self.global_config["env"]["frame_stack"] + 1
+        batch_size, frame_stack, *_ = list(shared_batch.__dict__.values())[0].shape
 
         # lock-free params
         protect_range = self.config.get("protect_range", 10) + frame_stack
