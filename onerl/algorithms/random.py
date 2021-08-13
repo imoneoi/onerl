@@ -22,7 +22,7 @@ class RandomAlgorithm(Algorithm):
             return self.env_params["act_max"] * (torch.rand(obs.shape[0], *self.env_params["act_shape"]) * 2 - 1)
 
     def learn(self, batch: BatchCuda):
-        pass
+        return {}
 
     def policy_state_dict(self):
         return OrderedDict()

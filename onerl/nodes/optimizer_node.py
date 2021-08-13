@@ -86,6 +86,10 @@ class OptimizerNode(Node):
             self.setstate("step")
             metric = algorithm.learn(batch)
             if metric is not None:
+                # update to data logging
+                if self.node_rank == 0:
+                    metric["update"] = 1
+
                 self.log_metric(metric)
 
             # update (if needed)

@@ -30,10 +30,10 @@ class MetricNode(Node):
         # shared objs
         shared_lock = self.objects["lock"]
         shared_tick = self.objects["tick"]
-        # update to data
+        # update to data & ticks per second
         utd_num_updates = 0
         utd_last_ticks = 0
-        utd_last_log = time.time()
+        utd_last_time = time.time()
 
         utd_log_interval = self.config.get("utd_log_interval", 1.0)
 
@@ -60,12 +60,15 @@ class MetricNode(Node):
                 del metric["update"]
 
                 current_time = time.time()
-                if (current_time - utd_last_log >= utd_log_interval) and (tick > utd_last_ticks):
-                    wandb.log({"update_per_data": utd_num_updates / (tick - utd_last_ticks)}, step=tick)
+                if (current_time - utd_last_time >= utd_log_interval) and (tick > utd_last_ticks):
+                    wandb.log({
+                        "update_per_data": utd_num_updates / (tick - utd_last_ticks),
+                        "ticks_per_sec": (tick - utd_last_ticks) / (current_time - utd_last_time)
+                    }, step=tick)
 
                     utd_num_updates = 0
                     utd_last_ticks = tick
-                    utd_last_log = current_time
+                    utd_last_time = current_time
 
             # log metric
             wandb.log(metric, step=tick)

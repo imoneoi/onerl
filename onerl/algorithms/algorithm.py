@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import torch
 from torch import nn
 
@@ -13,10 +15,10 @@ class Algorithm(nn.Module):
         self.env_params = env_params
 
     def forward(self, obs: torch.Tensor, ticks: int):
-        pass
+        assert False, "Algorithm: forward not implemented."
 
     def learn(self, batch: BatchCuda):
-        pass
+        return None
 
     def policy_state_dict(self):
-        pass
+        return OrderedDict()

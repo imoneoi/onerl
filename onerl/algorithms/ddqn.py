@@ -91,8 +91,6 @@ class DDQNAlgorithm(Algorithm):
         self.sync_weight()
 
         return {
-            "update": 1,
-
             "q_loss": loss.item(),
             "q_mean": q_mean.item()
         }
