@@ -1,3 +1,5 @@
+from collections import deque
+
 import numpy as np
 
 from onerl.nodes.node import Node
@@ -9,7 +11,7 @@ class SchedulerNode(Node):
         policy_batch_size = self.global_config["env"]["policy_batch_size"]
         policy_queue_size = np.zeros(self.node_count_by_class("PolicyNode", self.global_config), dtype=np.int64)
         # message queue
-        msg_queue_env = []
+        msg_queue_env = deque()
         msg_queue_policy = []
         # event loop
         while True:
@@ -38,7 +40,7 @@ class SchedulerNode(Node):
                     break
 
                 policy_queue_size[target_policy_id] += 1
-                self.send("PolicyNode.{}".format(target_policy_id), msg_queue_env.pop())
+                self.send("PolicyNode.{}".format(target_policy_id), msg_queue_env.popleft())
 
     def run_dummy(self):
         assert False, "SchedulerNode cannot be dummy"
