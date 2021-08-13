@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import ctypes
 import time
+import os
 
 import wandb
 
@@ -38,6 +39,14 @@ class MetricNode(Node):
 
         # initialize
         wandb.init(name=self.get_run_name(), config=self.global_config)
+        # log global objects
+        global_objects_log_file = os.path.join(wandb.run.dir, "global_objects.json")
+        with open(global_objects_log_file, "wt") as f:
+            f.write(self.global_objects.__repr__())
+            f.close()
+        wandb.save(global_objects_log_file)
+
+        # event loop
         while True:
             metric = self.recv()
             # get ticks

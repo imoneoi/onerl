@@ -26,3 +26,6 @@ class SharedStateDict:
         with torch.no_grad():
             for k, v in state_dict.items():
                 v.copy_(self.data_tensor[k])
+
+    def __repr__(self):
+        return "<SharedStateDict {}>".format(list(self.data.keys()))
