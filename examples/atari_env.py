@@ -154,6 +154,7 @@ def create_atari_env(
         episode_life: bool = True,
         clip_rewards: bool = True,
         warp_frame: bool = True,
+        fire_start: bool = True,
         no_reward_max_frames: int = 5 * 60 * (60 // 4)  # 5 minutes
 ):
     env = gym.make("{}Deterministic-v4".format(name))
@@ -163,7 +164,7 @@ def create_atari_env(
         env = NoRewardDoneEnv(env, no_reward_max_frames)
     if episode_life:
         env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
+    if fire_start and ('FIRE' in env.unwrapped.get_action_meanings()):
         env = FireResetEnv(env)
     if warp_frame:
         env = WarpFrame(env)
