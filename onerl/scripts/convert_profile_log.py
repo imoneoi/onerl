@@ -8,7 +8,8 @@ def convert_profile_log(path: str, buffering: int = 1048576, max_str_len: int = 
     json_file.write("[")
 
     # enumerate log files
-    for fn in os.listdir(path):
+    log_file_list = sorted(os.listdir(path))
+    for fn in log_file_list:
         log_file_name = os.path.join(path, fn)
         if (not os.path.isfile(log_file_name)) or (fn == "profile.json"):
             continue
