@@ -6,7 +6,8 @@ $global:
     import: examples.atari_env
     name: create_atari_env
     params:
-      name: Pong
+      name: Breakout
+      fire_start: False
     frame_stack: 4
 
   algorithm:
@@ -25,20 +26,20 @@ $global:
         params:
           use_bn: True
           input_dims: 64
-          num_hidden: [256]
-          output_dims: 6
+          num_hidden: [256, 256]
+          output_dims: 4
     params:
       replay_buffer_size: 1000000
 
-      lr: 0.001
-      batch_size: 128
+      lr: 0.0001
+      batch_size: 64
       gamma: 0.99
 
-      target_update_freq: 50
+      target_update_freq: 500
 
       eps_start: 1.0
       eps_final: 0.05
-      eps_final_steps: 100000
+      eps_final_steps: 1000000
 
   nodes:
     MetricNode:
