@@ -6,31 +6,31 @@ from onerl.utils.batch.shared import BatchShared
 
 class SamplerNode(Node):
     @staticmethod
-    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = Node.node_create_shared_objects(node_class, num, global_config)
+    def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
+        objects = Node.node_create_shared_objects(node_class, num, ns_config)
 
-        assert Node.node_count_by_class("OptimizerNode", global_config) == num, \
+        assert Node.node_count("OptimizerNode", ns_config) == num, \
                "Number of sampler nodes must equal to number of optimizer nodes."
 
-        tot_batch_size = global_config["algorithm"]["params"]["batch_size"]
-        num_samplers = Node.node_count_by_class("SamplerNode", global_config)
+        tot_batch_size = ns_config["algorithm"]["params"]["batch_size"]
+        num_samplers = Node.node_count("SamplerNode", ns_config)
 
         assert (tot_batch_size % num_samplers) == 0, \
                "Batch size must be divisible by number of samplers."
 
         batch_size = tot_batch_size // num_samplers
-        frame_stack = global_config["env"]["frame_stack"] + 1
+        frame_stack = ns_config["env"]["frame_stack"] + 1
         for obj in objects:
             obj["batch"] = BatchShared({
                 k: ((batch_size, frame_stack, *batch_shape), batch_dtype)
-                for k, (batch_shape, batch_dtype) in global_config["env"]["batch"].items()
+                for k, (batch_shape, batch_dtype) in ns_config["env"]["batch"].items()
             }, init_ready=False)
 
         return objects
 
     def run(self):
         # replay buffer shared objs
-        replay_buffer_objs = self.global_objects[self.get_node_name("ReplayBufferNode", 0)]
+        replay_buffer_objs = self.global_objects[self.find("ReplayBufferNode")]
 
         # local idx & size (for lock-free)
         shared_buffer = replay_buffer_objs["buffer"].get()

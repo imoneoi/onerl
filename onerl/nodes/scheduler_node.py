@@ -8,11 +8,14 @@ from onerl.nodes.node import Node
 class SchedulerNode(Node):
     def run(self):
         # policy queue
-        policy_batch_size = self.global_config["env"]["policy_batch_size"]
-        policy_queue_size = np.zeros(self.node_count_by_class("PolicyNode", self.global_config), dtype=np.int64)
+        policy_batch_size = self.ns_config["nodes"]["PolicyNode"]["batch_size"]
+        policy_queue_size = np.zeros(self.node_count("PolicyNode", self.ns_config), dtype=np.int64)
         # message queue
         msg_queue_env = deque()
         msg_queue_policy = []
+        # prefix
+        node_env_prefix = "{}@EnvNode.".format(self.node_ns)
+        node_policy_prefix = "{}@PolicyNode.".format(self.node_ns)
         # event loop
         while True:
             self.setstate("wait")
@@ -20,9 +23,9 @@ class SchedulerNode(Node):
 
             self.setstate("step")
             # push queue
-            if msg.startswith("EnvNode."):
+            if msg.startswith(node_env_prefix):
                 msg_queue_env.append(msg)
-            elif msg.startswith("PolicyNode."):
+            elif msg.startswith(node_policy_prefix):
                 msg_queue_policy.append(msg)
             else:
                 assert False, "Unknown message for SchedulerNode"
@@ -30,7 +33,7 @@ class SchedulerNode(Node):
             # process queue
             # Policy first, then env
             while msg_queue_policy:
-                policy_id = int(msg_queue_policy.pop()[len("PolicyNode."):])
+                policy_id = int(msg_queue_policy.pop()[len(node_policy_prefix):])
                 policy_queue_size[policy_id] = 0
             while msg_queue_env:
                 # first full scheduling
@@ -40,7 +43,4 @@ class SchedulerNode(Node):
                     break
 
                 policy_queue_size[target_policy_id] += 1
-                self.send("PolicyNode.{}".format(target_policy_id), msg_queue_env.popleft())
-
-    def run_dummy(self):
-        assert False, "SchedulerNode cannot be dummy"
+                self.send("{}@PolicyNode.{}".format(self.node_ns, target_policy_id), msg_queue_env.popleft())

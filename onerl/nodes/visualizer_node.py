@@ -8,7 +8,9 @@ from onerl.nodes.node import Node
 class VisualizerNode(Node):
     def run(self):
         # shared obs
-        shared_obs = [v["log"].data["obs"].get() for k, v in self.global_objects.items() if k.startswith("EnvNode.")]
+        node_env_prefix = "{}@EnvNode.".format(self.node_ns)
+        shared_obs = [v["obs"].get()
+                      for k, v in self.global_objects.items() if k.startswith(node_env_prefix)]
 
         # settings
         vis_delay = self.config.get("vis_delay", 1)
@@ -22,10 +24,10 @@ class VisualizerNode(Node):
 
         # grid
         obs_dtype = shared_obs[0].dtype
-        if len(shared_obs[0].shape) == 3:
+        if len(shared_obs[0].shape) == 4:
             # RGB / RG
-            # N H W C
-            img_c, img_h, img_w = shared_obs[0].shape
+            # FS C H W
+            img_fs, img_c, img_h, img_w = shared_obs[0].shape
             assert img_c <= 3, "VisualizerNode: image must have <= 3 channels"
 
             vis_c = 1 if img_c == 1 else 3
@@ -43,7 +45,7 @@ class VisualizerNode(Node):
                 for x in range(grid_w):
                     idx = y * grid_w + x
                     obs_all[img_h * y: img_h * (y + 1), img_w * x: img_w * (x + 1), :img_c] = \
-                        shared_obs[idx].transpose((1, 2, 0))  # C H W --> H W C
+                        shared_obs[idx][-1].transpose((1, 2, 0))  # C H W --> H W C
 
             # show
             self.setstate("show")

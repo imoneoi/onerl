@@ -52,7 +52,10 @@ class DDQNAlgorithm(Algorithm):
         # greedy actions
         act_greedy = torch.argmax(q, dim=-1).cpu()
         # eps-greedy
-        eps = self.eps_start - (self.eps_start - self.eps_final) * min(1.0, ticks / self.eps_final_steps)
+        if ticks is None:  # no tick, using min eps
+            eps = self.eps_final
+        else:
+            eps = self.eps_start - (self.eps_start - self.eps_final) * min(1.0, ticks / self.eps_final_steps)
         is_rand = torch.rand(act_greedy.shape[0]) < eps
         return torch.where(is_rand, torch.randint(0, self.act_n, (act_greedy.shape[0], )), act_greedy)
 

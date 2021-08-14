@@ -16,8 +16,8 @@ from onerl.nodes.node import Node
 
 class OptimizerNode(Node):
     @staticmethod
-    def create_algo(global_config, ddp_device=None):
-        algo_config = global_config["algorithm"]
+    def create_algo(ns_config, ddp_device=None):
+        algo_config = ns_config["algorithm"]
         # create network
         network = {k: get_class_from_str(v.get("import", ""), v["name"])(**v.get("params", {}))
                    for k, v in algo_config.get("network", {}).items()}
@@ -26,13 +26,13 @@ class OptimizerNode(Node):
                        for k, v in network.items()}
 
         algo_class = get_class_from_str(algo_config.get("import", ""), algo_config["name"])
-        return algo_class(network=network, env_params=global_config["env"], **algo_config.get("params", {}))
+        return algo_class(network=network, env_params=ns_config["env"], **algo_config.get("params", {}))
 
     @staticmethod
-    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = Node.node_create_shared_objects(node_class, num, global_config)
+    def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
+        objects = Node.node_create_shared_objects(node_class, num, ns_config)
         # policy state dict example
-        example_policy_state_dict = OptimizerNode.create_algo(global_config).policy_state_dict()
+        example_policy_state_dict = OptimizerNode.create_algo(ns_config).policy_state_dict()
         # rank 0 only, policy update
         objects[0].update({
             "update_lock": mp.Lock(),
@@ -48,12 +48,12 @@ class OptimizerNode(Node):
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = self.config.get("port", "12355")
         dist.init_process_group("nccl", rank=self.node_rank,
-                                world_size=self.node_count_by_class(self.node_class, self.global_config))
+                                world_size=self.node_count(self.node_class, self.ns_config))
         # allocate device
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
         # model
-        algorithm = self.create_algo(self.global_config, device)
+        algorithm = self.create_algo(self.ns_config, device)
 
         # updater
         last_update_time = time.time()
@@ -67,10 +67,10 @@ class OptimizerNode(Node):
             shared_update_state_dict.start()
 
         # optimizer
-        sampler_name = self.get_node_name("SamplerNode", self.node_rank)
-        batch = BatchCuda(self.global_objects[sampler_name]["batch"], device)
+        node_sampler = self.find("SamplerNode", self.node_rank)
+        batch = BatchCuda(self.global_objects[node_sampler]["batch"], device)
         # sample first batch
-        self.send(sampler_name, "")
+        self.send(node_sampler, "")
 
         while True:
             # wait & copy batch
@@ -80,7 +80,7 @@ class OptimizerNode(Node):
             batch.copy_from()
             torch.cuda.synchronize()  # copy is asynchronous
             # notify to sample
-            self.send(sampler_name, "")
+            self.send(node_sampler, "")
 
             # optimize
             self.setstate("step")
@@ -106,22 +106,3 @@ class OptimizerNode(Node):
                     self.objects["update_lock"].acquire()
                     self.objects["update_version"].value = current_model_version
                     self.objects["update_lock"].release()
-
-    def run_dummy(self):
-        dummy_train_time = self.config.get("dummy_train_time", 0.1)
-
-        sampler_name = self.get_node_name("SamplerNode", self.node_rank)
-        if sampler_name in self.global_objects:
-            shared_batch = self.global_objects[sampler_name]["batch"]
-
-            self.send(sampler_name, "")
-            while True:
-                self.setstate("wait")
-                shared_batch.wait_ready()
-                self.send(sampler_name, "")
-
-                self.setstate("step")
-                time.sleep(dummy_train_time)
-        else:
-            while True:
-                self.recv()

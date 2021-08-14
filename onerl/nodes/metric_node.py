@@ -10,8 +10,8 @@ from onerl.nodes.node import Node
 
 class MetricNode(Node):
     @staticmethod
-    def node_create_shared_objects(node_class: str, num: int, global_config: dict):
-        objects = Node.node_create_shared_objects(node_class, num, global_config)
+    def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
+        objects = Node.node_create_shared_objects(node_class, num, ns_config)
 
         assert num == 1, "MetricNode: There must be only one metric node."
         objects[0].update({
@@ -21,8 +21,8 @@ class MetricNode(Node):
         return objects
 
     def get_run_name(self):
-        env_name = self.global_config.get("env", {}).get("name", "")
-        algo_name = self.global_config.get("algorithm", {}).get("name", "Unknown")
+        env_name = self.ns_config.get("env", {}).get("name", "")
+        algo_name = self.ns_config.get("algorithm", {}).get("name", "Unknown")
 
         return "OneRL {} {} {}".format(env_name, algo_name, time.strftime("%H:%M %m-%d %Y"))
 
@@ -38,7 +38,7 @@ class MetricNode(Node):
         utd_log_interval = self.config.get("utd_log_interval", 1.0)
 
         # initialize
-        wandb.init(name=self.get_run_name(), config=self.global_config)
+        wandb.init(name=self.get_run_name(), config=self.ns_config)
         # log global objects
         global_objects_log_file = os.path.join(wandb.run.dir, "global_objects.json")
         with open(global_objects_log_file, "wt") as f:
