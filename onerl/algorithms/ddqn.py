@@ -39,11 +39,15 @@ class DDQNAlgorithm(Algorithm):
         # target network
         self.target_iter = 0
         self.target_network = nn.ModuleDict({k: deepcopy(v) for k, v in self.network.items()})
-        for v in self.target_network.values():
-            v.eval()
+        self.target_network.eval()
         # optimizer
         self.optimizer = torch.optim.Adam(list(self.network["feature_extractor"].parameters()) +
                                           list(self.network["critic"].parameters()), lr=self.lr)
+
+    def train(self, mode: bool = True):
+        self.training = mode
+        self.network.train(mode)
+        return self
 
     def forward(self, obs: torch.Tensor, ticks: int):
         with torch.no_grad():
@@ -68,8 +72,6 @@ class DDQNAlgorithm(Algorithm):
     def learn(self, batch: BatchCuda):
         # TODO: WARNING: DistributedDataParallel enabled here
         # TODO: prioritized replay
-        self.train()
-
         with torch.no_grad():
             next_obs = batch.data["obs"][:, 1:]
             curr_next_q = self.network["critic"](self.network["feature_extractor"](next_obs))

@@ -54,6 +54,7 @@ class OptimizerNode(Node):
         device = torch.device(devices[self.node_rank % len(devices)])
         # model
         algorithm = self.create_algo(self.ns_config, device)
+        algorithm.train()
 
         # updater
         last_update_time = time.time()
