@@ -15,12 +15,17 @@ class PolicyNode(Node):
         policy.eval()
 
         policy_version = -1
-        # queue
+        # batch
         batch_size = self.config["batch_size"]
         batch_cpu = torch.zeros((batch_size, self.ns_config["env"]["frame_stack"],
                                  *self.ns_config["env"]["obs_shape"]),
                                 dtype=numpy_to_torch_dtype_dict[self.ns_config["env"]["obs_dtype"]])
-        batch = torch.zeros_like(batch_cpu, device=device)
+        # batch (cpu-only mode)
+        is_cpu = device.type == "cpu"
+        if is_cpu:
+            batch = batch_cpu
+        else:
+            batch = torch.zeros_like(batch_cpu, device=device)
         # shared objs
         node_env_prefix = "{}@EnvNode.".format(self.node_ns)
         obs_shared = {k: v["obs"].get_torch()
@@ -37,6 +42,8 @@ class PolicyNode(Node):
 
         # ticking
         do_tick = self.config.get("do_tick", True)
+        if (not do_tick) or (node_metric is None):
+            self.log("Global step ticking disabled.")
 
         # policy update
         local_policy_state_dict = policy.policy_state_dict()
@@ -73,7 +80,8 @@ class PolicyNode(Node):
             self.setstate("copy_obs")
             for idx, env_name in enumerate(env_queue):
                 batch_cpu[idx] = obs_shared[env_name]
-            batch.copy_(batch_cpu)
+            if not is_cpu:
+                batch.copy_(batch_cpu)
 
             # get ticks
             self.setstate("step")
@@ -89,7 +97,8 @@ class PolicyNode(Node):
 
             # copy back
             self.setstate("copy_act")
-            act = act.cpu()
+            if not is_cpu:
+                act = act.cpu()
             for idx, env_name in enumerate(env_queue):
                 act_shared[env_name].copy_(act[idx])
                 self.send(env_name, "")
