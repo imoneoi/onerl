@@ -39,7 +39,7 @@ class DDQNAlgorithm(Algorithm):
         # target network
         self.target_iter = 0
         self.target_network = nn.ModuleDict({k: deepcopy(v) for k, v in self.network.items()})
-        self.target_network.eval()
+        self.target_network.train()
         # optimizer
         self.optimizer = torch.optim.Adam(list(self.network["feature_extractor"].parameters()) +
                                           list(self.network["critic"].parameters()), lr=self.lr)
