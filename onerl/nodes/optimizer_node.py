@@ -44,16 +44,25 @@ class OptimizerNode(Node):
         return objects
 
     def run(self):
+        # allocate device
+        devices = self.config["devices"]
+        device = torch.device(devices[self.node_rank % len(devices)])
         # distributed data parallel (DDP)
         # setup DDP
         # FIXME: Single machine multi-GPU setting
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = self.config.get("port", "12355")
-        dist.init_process_group("nccl", rank=self.node_rank,
+
+        # GLOO for CPU training, NCCL for GPU training
+        # https://pytorch.org/docs/stable/distributed.html
+        if device.type == "cpu":
+            is_cpu = True
+            dist_backend = "gloo"
+        else:
+            is_cpu = False
+            dist_backend = "nccl"
+        dist.init_process_group(dist_backend, rank=self.node_rank,
                                 world_size=self.node_count(self.node_class, self.ns_config))
-        # allocate device
-        devices = self.config["devices"]
-        device = torch.device(devices[self.node_rank % len(devices)])
         # model
         algorithm = self.create_algo(self.ns_config, device)
         algorithm.train()
@@ -81,7 +90,8 @@ class OptimizerNode(Node):
             batch.wait_ready()
             self.setstate("copy")
             batch.copy_from()
-            torch.cuda.synchronize()  # copy is asynchronous
+            if not is_cpu:
+                torch.cuda.synchronize()  # cuda copy is asynchronous
             # notify to sample
             self.send(node_sampler, "")
 
