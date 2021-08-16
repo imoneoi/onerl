@@ -22,7 +22,9 @@ class OptimizerNode(Node):
         network = {k: get_class_from_str(v.get("import", ""), v["name"])(**v.get("params", {}))
                    for k, v in algo_config.get("network", {}).items()}
         if ddp_device is not None:
-            network = {k: DistributedDataParallel(v.to(ddp_device), device_ids=[ddp_device])
+            device_ids = [ddp_device] if ddp_device.type != "cpu" else None
+            network = {k: DistributedDataParallel(v.to(ddp_device), device_ids=device_ids)
+                       if len(list(v.parameters())) else v
                        for k, v in network.items()}
 
         algo_class = get_class_from_str(algo_config.get("import", ""), algo_config["name"])
