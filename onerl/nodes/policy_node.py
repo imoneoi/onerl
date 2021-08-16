@@ -27,11 +27,9 @@ class PolicyNode(Node):
         else:
             batch = torch.zeros_like(batch_cpu, device=device)
         # shared objs
-        node_env_prefix = "{}@EnvNode.".format(self.node_ns)
-        obs_shared = {k: v["obs"].get_torch()
-                      for k, v in self.global_objects.items() if k.startswith(node_env_prefix)}
-        act_shared = {k: v["act"].get_torch()
-                      for k, v in self.global_objects.items() if k.startswith(node_env_prefix)}
+        node_env_list = self.find_all("EnvNode")
+        obs_shared = {k: self.global_objects[k]["obs"].get_torch() for k in node_env_list}
+        act_shared = {k: self.global_objects[k]["act"].get_torch() for k in node_env_list}
         # nodes
         node_optimizer = self.find("OptimizerNode", 0, self.config.get("optimizer_namespace", None))
         node_scheduler = self.find("SchedulerNode")

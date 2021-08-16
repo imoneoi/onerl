@@ -57,7 +57,7 @@ class Node:
     # Node utils
     @staticmethod
     def node_count(node_class: str, ns_config: dict):
-        return ns_config["num"][node_class]
+        return ns_config["num"].get(node_class, 0)
 
     # State
     def setstate(self, state: str):
@@ -71,10 +71,18 @@ class Node:
         if name in self.global_objects:
             return name
         # then global namespace
+        # FIXME: No global namespace in future
         name = self.get_node_name("$global", node_class, node_rank)
         if name in self.global_objects:
             return name
         return None
+
+    def find_all(self, node_class: str):
+        node_names = []
+        for rank in range(self.node_count(node_class, self.ns_config)):
+            node_names.append(self.get_node_name(self.node_ns, node_class, rank))
+
+        return node_names
 
     # Queue
     def send(self, target_name: str, msg: any):

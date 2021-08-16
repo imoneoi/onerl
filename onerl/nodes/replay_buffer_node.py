@@ -37,9 +37,9 @@ class ReplayBufferNode(Node):
         shared_idx = self.objects["idx"].get()
         shared_lock = self.objects["lock"]
         # shared (remote)
-        env_prefix = "{}@EnvNode.".format(self.node_ns)
-        shared_env_log = {int(k[len(env_prefix):]): v["log"].get()
-                          for k, v in self.global_objects.items() if k.startswith(env_prefix)}
+        node_env_list = self.find_all("EnvNode")
+        shared_env_log = [self.global_objects[k]["log"].get() for k in node_env_list]
+        node_name_to_id = {k: idx for idx, k in enumerate(node_env_list)}
 
         # event loop
         buffer_keys = list(shared_buffer.__dict__.keys())
@@ -47,7 +47,7 @@ class ReplayBufferNode(Node):
         while True:
             self.setstate("wait")
             env_name = self.recv()
-            env_id = int(env_name[len(env_prefix):])
+            env_id = node_name_to_id[env_name]
 
             # idx & size
             self.setstate("copy")
