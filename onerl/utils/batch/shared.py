@@ -1,7 +1,7 @@
 import multiprocessing as mp
 import pprint
 
-from onerl.utils.batch.numpy import BatchNumpy
+from onerl.utils.batch.local import BatchLocal
 from onerl.utils.shared_array import SharedArray
 
 
@@ -13,7 +13,7 @@ class BatchShared:
             self.ready.acquire()
 
     def get(self):
-        obj = BatchNumpy()
+        obj = BatchLocal()
         obj.__dict__.update({k: v.get() for k, v in self.data.items()})
         return obj
 
