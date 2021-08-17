@@ -3,6 +3,8 @@ from typing import Optional
 import torch
 from torch import nn
 
+from onerl.networks.norm_layer import normalization_layer
+
 
 def ortho_linear_layer(*args, **kwargs):
     linear = nn.Linear(*args, **kwargs)
@@ -20,7 +22,8 @@ class MLP(nn.Module):
                  input_dims: int,
                  output_dims: Optional[int] = None,
                  num_hidden: Optional[list] = None,
-                 use_bn: bool = True):
+                 norm_type: str = "group_norm",
+                 groups: int = 16):
         super().__init__()
 
         layers = []
@@ -30,8 +33,8 @@ class MLP(nn.Module):
             for layer_size in num_hidden:
                 layers.append(ortho_linear_layer(last_dims, layer_size))
                 layers.append(nn.GELU())
-                if use_bn:
-                    layers.append(nn.BatchNorm1d(layer_size))
+                if norm_type != "none":
+                    layers.append(normalization_layer(layer_size, norm_type, groups, is_2d=False))
 
                 last_dims = layer_size
 

@@ -2,15 +2,23 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from onerl.networks.norm_layer import normalization_layer
+
 
 class PreactResBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, stride: int = 1, use_bn: bool = True):
+    def __init__(self,
+                 in_channels: int,
+                 out_channels: int,
+                 stride: int,
+                 norm_type: str,
+                 groups: int):
         super(PreactResBlock, self).__init__()
 
-        self.bn1 = nn.BatchNorm2d(in_channels) if use_bn else nn.Identity()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=not use_bn)
-        self.bn2 = nn.BatchNorm2d(out_channels) if use_bn else nn.Identity()
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=not use_bn)
+        use_bias = norm_type == "none"
+        self.bn1 = normalization_layer(in_channels, norm_type, groups)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=use_bias)
+        self.bn2 = normalization_layer(out_channels, norm_type, groups)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=use_bias)
 
         if stride != 1 or in_channels != out_channels:
             self.downsample = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False)
@@ -29,18 +37,21 @@ class ResnetEncoder(nn.Module):
                  in_channels: int,
                  num_layers: int = 3,
                  start_channels: int = 16,
-                 use_bn: bool = True):
+                 norm_type: str = "group_norm",
+                 groups: int = 8):
         super().__init__()
         # network architecture
         # initial conv
-        layers = [nn.Conv2d(in_channels, start_channels, kernel_size=3, stride=1, padding=1, bias=not use_bn)]
-        if use_bn:
-            layers.append(nn.BatchNorm2d(start_channels))
+        use_bias = norm_type == "none"
+        layers = [
+            nn.Conv2d(in_channels, start_channels, kernel_size=3, stride=1, padding=1, bias=use_bias),
+            normalization_layer(start_channels, norm_type, groups)
+        ]
         # res blocks
         last_channels = num_channels = start_channels
         for idx in range(num_layers):
-            layers.append(PreactResBlock(last_channels, num_channels, 2, use_bn))
-            layers.append(PreactResBlock(num_channels, num_channels, 1, use_bn))
+            layers.append(PreactResBlock(last_channels, num_channels, 2, norm_type, groups))
+            layers.append(PreactResBlock(num_channels, num_channels, 1, norm_type, groups))
             last_channels = num_channels
             num_channels *= 2
 
