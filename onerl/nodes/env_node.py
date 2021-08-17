@@ -88,7 +88,9 @@ class EnvNode(Node):
 
             # step env
             self.setstate("step")
-            obs_next, rew, done, _ = env.step(shared_act)
+            obs_next, rew, done, info = env.step(shared_act)
+            # ignore time limit induced done
+            log_done = done and (not info.get("TimeLimit.truncated", False))
             tot_reward += rew
             # log
             if node_replay_buffer is not None:
@@ -99,7 +101,7 @@ class EnvNode(Node):
                 np.copyto(shared_log.obs, obs)
                 np.copyto(shared_log.act, shared_act)
                 np.copyto(shared_log.rew, rew)
-                np.copyto(shared_log.done, done)
+                np.copyto(shared_log.done, log_done)
                 self.send(node_replay_buffer, self.node_name)
 
             # update obs & reset
