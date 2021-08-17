@@ -17,13 +17,12 @@ $global:
         import: onerl.networks
         name: ResnetEncoder
         params:
-          use_bn: True
           in_channels: 4
       critic:
         import: onerl.networks
         name: MLP
         params:
-          use_bn: True
+          norm_type: none
           input_dims: 64
           num_hidden: [256]
           output_dims: 4
@@ -31,10 +30,10 @@ $global:
       replay_buffer_size: 1000000
 
       lr: 0.0001
-      batch_size: 64
+      batch_size: 128
       gamma: 0.99
 
-      target_update_freq: 500
+      target_update_freq: 100
 
       eps_start: 1.0
       eps_final: 0.05
@@ -47,11 +46,11 @@ $global:
 $train:
   nodes:
     EnvNode:
-      num: 16
+      num: 32
     PolicyNode:
-      num: 2
-      batch_size: 4
-      devices: [cuda:0, cuda:1]
+      num: 16
+      batch_size: 1
+      devices: [cpu]
     SchedulerNode:
       num: 1
     ReplayBufferNode:
@@ -61,9 +60,9 @@ $train:
     OptimizerNode:
       num: 2
       update_interval: 3.0
-      devices: [cuda:0, cuda:1]
-    VisualizerNode:
-      num: 1
+      devices: [cuda:1, cuda:0]
+    #VisualizerNode:
+    #  num: 1
 
 $test:
   env:
