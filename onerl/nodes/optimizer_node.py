@@ -16,15 +16,15 @@ from onerl.nodes.node import Node
 
 class OptimizerNode(Node):
     @staticmethod
-    def create_algo(ns_config, ddp_device=None):
+    def create_algo(ns_config: dict, net_device: torch.device = None, use_ddp: bool = False):
         algo_config = ns_config["algorithm"]
         # create network
         network = {k: get_class_from_str(v.get("import", ""), v["name"])(**v.get("params", {}))
                    for k, v in algo_config.get("network", {}).items()}
-        if ddp_device is not None:
-            device_ids = [ddp_device] if ddp_device.type != "cpu" else None
-            network = {k: DistributedDataParallel(v.to(ddp_device), device_ids=device_ids)
-                       if len(list(v.parameters())) else v
+        if net_device is not None:
+            device_ids = [net_device] if net_device.type != "cpu" else None
+            network = {k: DistributedDataParallel(v.to(net_device), device_ids=device_ids)
+                       if use_ddp and len(list(v.parameters())) else v.to(net_device)
                        for k, v in network.items()}
 
         algo_class = get_class_from_str(algo_config.get("import", ""), algo_config["name"])
@@ -47,24 +47,28 @@ class OptimizerNode(Node):
         # allocate device
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
-        # distributed data parallel (DDP)
-        # setup DDP
-        # FIXME: Single machine multi-GPU setting
-        os.environ["MASTER_ADDR"] = "localhost"
-        os.environ["MASTER_PORT"] = self.config.get("port", "12355")
+        is_cpu = device.type == "cpu"
 
-        # GLOO for CPU training, NCCL for GPU training
-        # https://pytorch.org/docs/stable/distributed.html
-        if device.type == "cpu":
-            is_cpu = True
-            dist_backend = "gloo"
-        else:
-            is_cpu = False
-            dist_backend = "nccl"
-        dist.init_process_group(dist_backend, rank=self.node_rank,
-                                world_size=self.node_count(self.node_class, self.ns_config))
+        # distributed data parallel (DDP)
+        use_ddp = False
+        if self.node_count("OptimizerNode", self.ns_config) > 1:
+            use_ddp = True
+            # setup DDP
+            # FIXME: Single machine multi-GPU setting
+            os.environ["MASTER_ADDR"] = "localhost"
+            os.environ["MASTER_PORT"] = self.config.get("port", "12355")
+
+            # GLOO for CPU training, NCCL for GPU training
+            # https://pytorch.org/docs/stable/distributed.html
+            if is_cpu:
+                dist_backend = "gloo"
+            else:
+                dist_backend = "nccl"
+            dist.init_process_group(dist_backend, rank=self.node_rank,
+                                    world_size=self.node_count(self.node_class, self.ns_config))
+
         # model
-        algorithm = self.create_algo(self.ns_config, device)
+        algorithm = self.create_algo(self.ns_config, device, use_ddp)
         algorithm.train()
 
         # updater
