@@ -94,8 +94,9 @@ class OptimizerNode(Node):
             batch.wait_ready()
             self.setstate("copy")
             batch.copy_from()
-            if not is_cpu:
-                torch.cuda.synchronize()  # cuda copy is asynchronous
+            # FIXME: will async copy be corrupted here?
+            # if not is_cpu:
+            #     torch.cuda.synchronize()  # cuda copy is asynchronous
             # notify to sample
             self.send(node_sampler, "")
 
