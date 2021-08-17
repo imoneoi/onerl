@@ -23,8 +23,6 @@ class SACAlgorithm(Algorithm):
             lr_alpha: float = 3e-4,
             gamma: float = 0.99,
             tau: float = 0.005,
-            # special
-            ignore_done: bool = False,
             # exploration
             alpha: Optional[float] = None,
             target_entropy: Optional[float] = None,
@@ -44,8 +42,6 @@ class SACAlgorithm(Algorithm):
         self.lr_critic = lr_critic
         self.lr_alpha = lr_alpha
         self.gamma = gamma
-        # special (value)
-        self.ignore_done = ignore_done
         # alpha
         if alpha is not None:
             # fixed alpha
@@ -131,11 +127,7 @@ class SACAlgorithm(Algorithm):
             ) - self.alpha * next_log_prob
 
             # update target
-            # ignore done
-            if self.ignore_done:
-                update_target = batch.data["rew"][:, -2] + self.gamma * next_q
-            else:
-                update_target = batch.data["rew"][:, -2] + self.gamma * (1. - batch.data["done"][:, -2]) * next_q
+            update_target = batch.data["rew"][:, -2] + self.gamma * (1. - batch.data["done"][:, -2]) * next_q
 
         # critic q learning
         obs_feature = self.network["feature_extractor"](batch.data["obs"][:, :-1])
