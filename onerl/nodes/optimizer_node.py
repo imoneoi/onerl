@@ -82,6 +82,11 @@ class OptimizerNode(Node):
             shared_update_state_dict = self.objects["update_state_dict"]
             shared_update_state_dict.start()
 
+        # save model
+        last_save_model_time = time.time()
+        save_model_path = self.config.get("save_path", "models")
+        os.makedirs(save_model_path, exist_ok=True)
+
         # optimizer
         node_sampler = self.find("SamplerNode", self.node_rank)
         batch = BatchCuda(self.global_objects[node_sampler]["batch"], device)
@@ -110,8 +115,8 @@ class OptimizerNode(Node):
 
                 self.log_metric(metric)
 
-            # update (if needed)
             if self.node_rank == 0:
+                # update (if needed)
                 current_model_version += 1
                 current_time = time.time()
                 if (current_time - last_update_time) >= self.config["update_interval"]:
@@ -124,3 +129,12 @@ class OptimizerNode(Node):
                     self.objects["update_lock"].acquire()
                     self.objects["update_version"].value = current_model_version
                     self.objects["update_lock"].release()
+
+                # save model
+                if (current_time - last_save_model_time) >= self.config.get("save_interval", 3600):
+                    last_save_model_time = current_time
+
+                    save_filename = os.path.join(save_model_path, str(current_model_version))
+                    torch.save(algorithm.state_dict(), save_filename)
+                    # log model
+                    self.log_metric({"save_model": True, "save_filename": save_filename})

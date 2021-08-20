@@ -70,5 +70,10 @@ class MetricNode(Node):
                     utd_last_ticks = tick
                     utd_last_time = current_time
 
+            # save model
+            if "save_model" in metric:
+                wandb.save(metric["save_filename"])
+                continue
+
             # log metric
             wandb.log(metric, step=tick)
