@@ -44,10 +44,11 @@ class VisualizerNode(Node):
                     idx = y * grid_w + x
                     obs_all[img_h * y: img_h * (y + 1), img_w * x: img_w * (x + 1), :img_c] = \
                         shared_obs[idx][-1].transpose((1, 2, 0))  # C H W --> H W C
+            obs_all_bgr = cv2.cvtColor(obs_all, cv2.COLOR_RGB2BGR)
 
             # show
             self.setstate("show")
-            cv2.imshow(self.node_name, obs_all)
+            cv2.imshow(self.node_name, obs_all_bgr)
 
             self.setstate("wait")
             cv2.waitKey(vis_delay)
