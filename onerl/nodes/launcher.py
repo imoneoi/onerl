@@ -2,6 +2,7 @@ import collections
 import multiprocessing as mp
 import argparse
 from copy import deepcopy
+import time
 
 import yaml
 
@@ -69,20 +70,33 @@ def launch_nodes(yaml_config: dict):
         for node_class, node_params in nodes.items():
             node_num = node_params.get("num", 1)
             for rank in range(node_num):
-                proc = mp.Process(target=node_worker_, name=Node.get_node_name(ns_name, node_class, rank),
-                                  kwargs={
-                                      "node_class": node_class,
-                                      "node_ns": ns_name,
-                                      "node_rank": rank,
-                                      "node_config": node_params,
-                                      "ns_config": ns_config,
-                                      "global_objects": global_objects
-                                  })
-                processes.append(proc)
+                proc_args = {"target": node_worker_,
+                             "name": Node.get_node_name(ns_name, node_class, rank),
+                             "kwargs": {
+                                   "node_class": node_class,
+                                   "node_ns": ns_name,
+                                   "node_rank": rank,
+                                   "node_config": node_params,
+                                   "ns_config": ns_config,
+                                   "global_objects": global_objects
+                             }}
+                processes.append([mp.Process(**proc_args), proc_args])
 
     # start & join
-    [proc.start() for proc in processes]
-    [proc.join() for proc in processes]
+    [proc.start() for proc, _ in processes]
+
+    # node check & auto-recovery
+    while True:
+        # check process status
+        for proc_args in processes:
+            if not proc_args[0].is_alive():
+                print("Node {} died, respawning".format(proc_args[1]["name"]))
+
+                process = mp.Process(**proc_args[1])
+                process.start()
+                proc_args[0] = process
+
+        time.sleep(0.1)
 
 
 def main():
