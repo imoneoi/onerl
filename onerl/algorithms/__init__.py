@@ -6,6 +6,8 @@ from onerl.algorithms.ddqn import DDQNAlgorithm
 
 from onerl.algorithms.sac import SACAlgorithm
 
+from onerl.algorithms.hwm import HWMAlgorithm
+
 
 __all__ = [
     # Base
@@ -18,5 +20,8 @@ __all__ = [
     "DDQNAlgorithm",
 
     # Continuous
-    "SACAlgorithm"
+    "SACAlgorithm",
+
+    # Model-based
+    "HWMAlgorithm"
 ]

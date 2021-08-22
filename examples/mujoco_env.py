@@ -8,6 +8,8 @@ import gym
 import numpy as np
 import time
 
+import examples.halfcheetah_v3_custom
+
 
 class SleepEnv(gym.Wrapper):
     def __init__(self, env, dt):

@@ -19,7 +19,9 @@ class SamplerNode(Node):
                "Batch size must be divisible by number of samplers."
 
         batch_size = tot_batch_size // num_samplers
-        frame_stack = ns_config["env"]["frame_stack"] + 1
+        frame_stack = ns_config["env"].get("sample_frame_stack", None)
+        if frame_stack is None:
+            frame_stack = ns_config["env"]["frame_stack"] + 1
         for obj in objects:
             obj["batch"] = BatchShared({
                 k: ((batch_size, frame_stack, *batch_shape), batch_dtype)
