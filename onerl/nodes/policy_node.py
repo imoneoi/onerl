@@ -13,6 +13,11 @@ class PolicyNode(Node):
         # load policy
         policy = OptimizerNode.create_algo(self.ns_config).to(device)
         policy.eval()
+        if "load_policy" in self.config:
+            policy_state_dict = torch.load(self.config["load_policy"], map_location=device)
+            policy_state_dict = {k.replace("module.", ""): v
+                                 for k, v in policy_state_dict.items()}
+            policy.load_state_dict(policy_state_dict, strict=False)
 
         policy_version = -1
         # batch
