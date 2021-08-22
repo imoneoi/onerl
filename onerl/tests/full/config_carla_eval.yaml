@@ -6,8 +6,9 @@ $global:
     import: wrapped_carla_env
     name: create_wrapped_carla_single_car_env
     params:
-      global_config: {}
+      global_config: {"world": {"map_list": ["/Game/Carla/Maps/Town10HD"]}, "server": {"quality": "Epic"}}
       gpu_index: 0
+      time_limit: 100000000
     frame_stack: 1
 
   algorithm:
@@ -64,7 +65,7 @@ $eval:
       batch_size: 1
       devices: [cpu]
       do_tick: False
-      load_policy: /home/one/Downloads/1193912_conservative1
+      load_policy: /home/one/Downloads/146170_multrew
     SchedulerNode:
       num: 1
     VisualizerNode:
