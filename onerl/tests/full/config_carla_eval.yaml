@@ -1,0 +1,71 @@
+$global:
+  profile: False
+  profile_log_path: profile_log
+
+  env:
+    import: wrapped_carla_env
+    name: create_wrapped_carla_single_car_env
+    params:
+      global_config: {}
+      gpu_index: 0
+    frame_stack: 1
+
+  algorithm:
+    import: onerl.algorithms
+    name: SACAlgorithm
+    network:
+      feature_extractor:
+        import: onerl.networks
+        name: ResnetEncoder
+        params:
+          norm_type: none
+          in_channels: 3
+      actor:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 64
+          num_hidden: [256, 256]
+          output_dims: 4  # 2 * N(action)
+      critic1:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 66  # N(feature) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 1
+      critic2:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 66  # N(feature) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 1
+    params:
+      replay_buffer_size: 1000000
+      batch_size: 256
+
+      tau: 0.02
+      alpha: 0.1
+
+  nodes:
+    MetricNode:
+      num: 1
+
+$eval:
+  nodes:
+    EnvNode:
+      num: 1
+    PolicyNode:
+      num: 1
+      batch_size: 1
+      devices: [cpu]
+      do_tick: False
+      load_policy: /home/one/Downloads/1193912_conservative1
+    SchedulerNode:
+      num: 1
+    VisualizerNode:
+      num: 1
