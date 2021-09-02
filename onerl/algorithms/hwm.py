@@ -17,10 +17,12 @@ class HWMAlgorithm(Algorithm):
                  noise_scale: float = 0.2,
                  noise_max: float = 0.5,
                  # HWM
+                 h: int = 5,
                  gamma: float = 0.99,
                  # learning rates
                  lr_wm: float = 1e-3,
                  lr_policy: float = 1e-3,
+                 lr_critic: float = 1e-3,
                  # unused
                  batch_size: Optional[int] = None,
                  replay_buffer_size: Optional[int] = None
