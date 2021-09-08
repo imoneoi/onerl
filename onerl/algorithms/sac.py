@@ -60,12 +60,12 @@ class SACAlgorithm(Algorithm):
                                              for k in ["feature_extractor", "critic1", "critic2"]})
         self.target_network.train()  # target network BN train mode, to stabilize Q learning
         # optimizer
-        self.actor_optimizer = torch.optim.Adam(
+        self.actor_optimizer = torch.optim.AdamW(
             self.network["actor"].parameters(),
-            lr=self.lr_actor)
-        self.critic_optimizer = torch.optim.Adam(
+            lr=self.lr_actor, weight_decay=1e-3)
+        self.critic_optimizer = torch.optim.AdamW(
             sum([list(self.network[k].parameters()) for k in ["feature_extractor", "critic1", "critic2"]], []),
-            lr=self.lr_critic)
+            lr=self.lr_critic, weight_decay=1e-3)
 
     def train(self, mode: bool = True):
         self.training = mode
