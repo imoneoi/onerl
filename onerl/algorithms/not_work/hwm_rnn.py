@@ -7,7 +7,7 @@ from onerl.algorithms.algorithm import Algorithm
 from onerl.utils.batch.cuda import BatchCuda
 
 
-class HWMAlgorithm(Algorithm):
+class HWMRNNAlgorithm(Algorithm):
     def __init__(self,
                  network: dict,
                  env_params: dict,

@@ -8,39 +8,54 @@ $global:
     params:
       name: HalfCheetah-v3
     frame_stack: 1
+    sample_frame_stack: 17
 
   algorithm:
     import: onerl.algorithms
-    name: SACAlgorithm
+    name: HWMVPNAlgorithm
     network:
-      feature_extractor:
+      wm:
         import: torch.nn
-        name: Flatten
-      actor:
-        import: onerl.networks
-        name: ResMLP
+        name: GRU
         params:
-          input_dims: 17   # N(feature)
-          output_dims: 12  # 2 * N(action)
-      critic1:
+          input_size: 6
+          hidden_size: 256
+      encoder:
         import: onerl.networks
-        name: ResMLP
+        name: MLP
         params:
-          input_dims: 23  # N(feature) + N(action)
+          norm_type: none
+          input_dims: 17
+          num_hidden: [256]
+          output_dims: 256
+      reward:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 256
+          num_hidden: [256]
+          output_dims: 2
+      q:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 262
+          num_hidden: [256, 256]
           output_dims: 1
-      critic2:
+      policy:
         import: onerl.networks
-        name: ResMLP
+        name: MLP
         params:
-          input_dims: 23  # N(feature) + N(action)
-          output_dims: 1
+          norm_type: none
+          input_dims: 256
+          num_hidden: [256, 256]
+          output_dims: 6
+
     params:
       replay_buffer_size: 1000000
       batch_size: 256
-
-      lr_actor: 0.001
-      lr_critic: 0.001
-      alpha: 0.2
 
   nodes:
     MetricNode:
@@ -49,7 +64,7 @@ $global:
 $train:
   env:
     params:
-      sleep_time: 0.015
+      sleep_time: 0.01
 
   nodes:
     EnvNode:

@@ -8,59 +8,170 @@ $global:
     params:
       name: HalfCheetahCustom-v3
     frame_stack: 1
-    sample_frame_stack: 21
 
   algorithm:
     import: onerl.algorithms
     name: HWMAlgorithm
     network:
-      wm:
-        import: torch.nn
-        name: GRU
-        params:
-          input_size: 6
-          hidden_size: 256
-      encoder:
+      actor:
         import: onerl.networks
         name: MLP
         params:
           norm_type: none
           input_dims: 20
-          num_hidden: [256]
-          output_dims: 256
-
-      decoder:
-        import: onerl.networks
-        name: MLP
-        params:
-          norm_type: none
-          input_dims: 256
-          num_hidden: [256]
-          output_dims: 20
-      reward:
-        import: onerl.networks
-        name: MLP
-        params:
-          norm_type: none
-          input_dims: 256
-          num_hidden: [256]
-          output_dims: 2
-
-      policy:
-        import: onerl.networks
-        name: MLP
-        params:
-          norm_type: none
-          input_dims: 256
           num_hidden: [256, 256]
-          output_dims: 6
+          output_dims: 6  # N(action)
+
+      wm0:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 20  # 2 + N(state)
+      wm1:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 20  # 2 + N(state)
+      wm2:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 20  # 2 + N(state)
+      wm3:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 20  # 2 + N(state)
+#      wm4:
+#        import: onerl.networks
+#        name: MLP
+#        params:
+#          norm_type: none
+#          input_dims: 26  # N(state) + N(action)
+#          num_hidden: [256, 256]
+#          output_dims: 20  # 2 + N(state)
+#      wm5:
+#        import: onerl.networks
+#        name: MLP
+#        params:
+#          norm_type: none
+#          input_dims: 26  # N(state) + N(action)
+#          num_hidden: [256, 256]
+#          output_dims: 20  # 2 + N(state)
+
+      qa0:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+      qa1:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+      qa2:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+      qa3:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+#      qa4:
+#        import: onerl.networks
+#        name: MLP
+#        params:
+#          norm_type: none
+#          input_dims: 26  # N(state) + N(action)
+#          num_hidden: [256, 256]
+#          output_dims: 2  # 2 + N(state)
+#      qa5:
+#        import: onerl.networks
+#        name: MLP
+#        params:
+#          norm_type: none
+#          input_dims: 26  # N(state) + N(action)
+#          num_hidden: [256, 256]
+#          output_dims: 2  # 2 + N(state)
+
+      qb0:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+      qb1:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+      qb2:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+      qb3:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 26  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 2  # 2 + N(state)
+#      qb4:
+#        import: onerl.networks
+#        name: MLP
+#        params:
+#          norm_type: none
+#          input_dims: 26  # N(state) + N(action)
+#          num_hidden: [256, 256]
+#          output_dims: 2  # 2 + N(state)
+#      qb5:
+#        import: onerl.networks
+#        name: MLP
+#        params:
+#          norm_type: none
+#          input_dims: 26  # N(state) + N(action)
+#          num_hidden: [256, 256]
+#          output_dims: 2  # 2 + N(state)
 
     params:
       replay_buffer_size: 1000000
       batch_size: 256
-
-      lr_wm: 0.001
-      lr_policy: 0.0003
 
   nodes:
     MetricNode:
@@ -69,7 +180,7 @@ $global:
 $train:
   env:
     params:
-      sleep_time: 0.03
+      sleep_time: 0.02
 
   nodes:
     EnvNode:

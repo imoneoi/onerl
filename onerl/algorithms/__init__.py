@@ -9,6 +9,7 @@ from onerl.algorithms.sac import SACAlgorithm
 
 from onerl.algorithms.hwm import HWMAlgorithm
 from onerl.algorithms.drp import DRPAlgorithm
+from onerl.algorithms.hwm_rnn import HWMRNNAlgorithm
 
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     # Model-based
     "HWMAlgorithm",
     "DRPAlgorithm"
+    "HWMRNNAlgorithm"
 ]
