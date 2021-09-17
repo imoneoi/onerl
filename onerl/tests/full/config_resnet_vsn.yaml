@@ -1,0 +1,91 @@
+$global:
+  profile: True
+  profile_log_path: profile_log
+
+  env:
+    import: examples.atari_env
+    name: create_atari_env
+    params:
+      name: Seaquest
+    frame_stack: 4
+
+  algorithm:
+    import: onerl.algorithms
+    name: VSNAlgorithm
+    network:
+      feature_extractor:
+        import: onerl.networks
+        name: ResnetEncoder
+        params:
+          norm_type: group_norm
+          in_channels: 4
+      critic:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: layer_norm
+          input_dims: 64
+          num_hidden: [256]
+          output_dims: 1152
+    params:
+      replay_buffer_size: 1000000
+
+      h: 64
+
+      lr: 0.0001
+      batch_size: 64
+      gamma: 1
+      # target_update_freq: 50
+
+      eps_start: 1.0
+      eps_final: 0.05
+      eps_final_steps: 1000000
+
+  nodes:
+    MetricNode:
+      num: 1
+
+$train:
+  nodes:
+    EnvNode:
+      num: 16
+    PolicyNode:
+      num: 2
+      batch_size: 4
+      devices: [cpu]
+    SchedulerNode:
+      num: 1
+    ReplayBufferNode:
+      num: 1
+    SamplerNode:
+      num: 2
+    OptimizerNode:
+      num: 2
+      update_interval: 3.0
+      devices: [cuda:1, cuda:0]
+    VisualizerNode:
+      num: 1
+
+$test:
+  env:
+    params:
+      clip_rewards: False
+      episode_life: False
+  algorithm:
+    params:
+      eps_start: 0.005
+      eps_final: 0.005
+
+  nodes:
+    EnvNode:
+      num: 1
+    PolicyNode:
+      num: 1
+      batch_size: 1
+      devices: [cpu]
+      do_tick: False
+      optimizer_namespace: $train
+    SchedulerNode:
+      num: 1
+    VisualizerNode:
+      num: 1
