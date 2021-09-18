@@ -13,7 +13,7 @@ class RandomAlgorithm(Algorithm):
                  **kwargs):
         super().__init__(network, env_params)
 
-    def forward(self, obs: torch.Tensor, ticks: int):
+    def forward(self, obs: torch.Tensor, ticks: int) -> torch.Tensor:
         if "act_n" in self.env_params:
             # discrete action space
             return torch.randint(0, self.env_params["act_n"], (obs.shape[0], ))
@@ -21,8 +21,8 @@ class RandomAlgorithm(Algorithm):
             # uniform -act_max ... act_max
             return self.env_params["act_max"] * (torch.rand(obs.shape[0], *self.env_params["act_shape"]) * 2 - 1)
 
-    def learn(self, batch: BatchCuda):
+    def learn(self, batch: BatchCuda) -> dict:
         return {}
 
-    def policy_state_dict(self):
+    def policy_state_dict(self) -> OrderedDict:
         return OrderedDict()

@@ -49,7 +49,7 @@ class DDQNAlgorithm(Algorithm):
         self.network.train(mode)
         return self
 
-    def forward(self, obs: torch.Tensor, ticks: int):
+    def forward(self, obs: torch.Tensor, ticks: int) -> torch.Tensor:
         with torch.no_grad():
             q = self.network["critic"](self.network["feature_extractor"](obs))
 
@@ -69,7 +69,7 @@ class DDQNAlgorithm(Algorithm):
             for k, v in self.target_network.items():
                 v.load_state_dict(self.network[k].state_dict())
 
-    def learn(self, batch: BatchCuda):
+    def learn(self, batch: BatchCuda) -> dict:
         # TODO: WARNING: DistributedDataParallel enabled here
         # TODO: prioritized replay
         with torch.no_grad():
@@ -100,7 +100,7 @@ class DDQNAlgorithm(Algorithm):
             "q_mean": q_mean.item()
         }
 
-    def policy_state_dict(self):
+    def policy_state_dict(self) -> OrderedDict:
         # state dict of networks
         result = OrderedDict()
         for net_name, net in self.network.items():

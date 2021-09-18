@@ -76,7 +76,7 @@ class SACAlgorithm(Algorithm):
                 obs: torch.Tensor,
                 ticks: int,
                 feature: Optional[torch.Tensor] = None,
-                return_log_prob: bool = False):
+                return_log_prob: bool = False) -> torch.Tensor:
         # network forward
         if feature is None:
             feature = self.network["feature_extractor"](obs)
@@ -113,7 +113,7 @@ class SACAlgorithm(Algorithm):
             for d, s in zip(dst.parameters(), src.parameters()):
                 d.data.copy_(d.data * (1.0 - self.tau) + s.data * self.tau)
 
-    def learn(self, batch: BatchCuda):
+    def learn(self, batch: BatchCuda) -> dict:
         # TODO: WARNING: DistributedDataParallel enabled here
         with torch.no_grad():
             next_obs = batch.data["obs"][:, 1:]
@@ -186,7 +186,7 @@ class SACAlgorithm(Algorithm):
             "q2_a_mean": q2_a_mean.item()
         }
 
-    def policy_state_dict(self):
+    def policy_state_dict(self) -> OrderedDict:
         # state dict of networks
         result = OrderedDict()
         for net_name in ["feature_extractor", "actor"]:
