@@ -14,11 +14,11 @@ class Algorithm(nn.Module):
         self.network = nn.ModuleDict(network)
         self.env_params = env_params
 
-    def forward(self, obs: torch.Tensor, ticks: int):
-        assert False, "Algorithm: forward not implemented."
+    def forward(self, obs: torch.Tensor, ticks: int) -> torch.Tensor:
+        raise NotImplementedError("Algorithm: forward not implemented.")
 
-    def learn(self, batch: BatchCuda):
-        return None
+    def learn(self, batch: BatchCuda) -> dict:
+        raise NotImplementedError("Algorithm: learn not implemented.")
 
-    def policy_state_dict(self):
-        return OrderedDict()
+    def policy_state_dict(self) -> OrderedDict:
+        raise NotImplementedError("Algorithm: policy_state_dict not implemented.")
