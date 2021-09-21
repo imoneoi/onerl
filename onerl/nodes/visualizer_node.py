@@ -11,7 +11,7 @@ class VisualizerNode(Node):
         shared_obs = [self.global_objects[k]["obs"].get() for k in self.find_all("EnvNode")]
 
         # settings
-        vis_delay = self.config.get("vis_delay", 1)
+        vis_delay = 1000 // self.config.get("fps", 30)
 
         # grid size (w > h, maximum h) by integer factorization
         grid_n = len(shared_obs)
