@@ -1,31 +1,30 @@
 $global:
-  profile: True
-  profile_log_path: profile_log
+  # Profiling
+  # profile: True
+  # profile_log_path: profile_log
 
+  # Environment
   env:
-    import: examples.mujoco_env
+    import: examples.envs.mujoco_env
     name: create_mujoco_env
     params:
       name: HalfCheetah-v3
     frame_stack: 1
 
+  # Algorithm
   algorithm:
     import: onerl.algorithms
     name: SACAlgorithm
-    network:
+    network:  # Network architecture
       feature_extractor:
-        import: onerl.networks
-        name: MLP
-        params:
-          norm_type: none
-          input_dims: 17
-          num_hidden: [256, 256]
+        import: torch.nn
+        name: Flatten
       actor:
         import: onerl.networks
         name: MLP
         params:
           norm_type: none
-          input_dims: 256
+          input_dims: 17  # N(state)
           num_hidden: [256, 256]
           output_dims: 12  # 2 * N(action)
       critic1:
@@ -33,7 +32,7 @@ $global:
         name: MLP
         params:
           norm_type: none
-          input_dims: 262  # N(feature) + N(action)
+          input_dims: 23  # N(state) + N(action)
           num_hidden: [256, 256]
           output_dims: 1
       critic2:
@@ -41,25 +40,27 @@ $global:
         name: MLP
         params:
           norm_type: none
-          input_dims: 262  # N(feature) + N(action)
+          input_dims: 23  # N(state) + N(action)
           num_hidden: [256, 256]
           output_dims: 1
-    params:
+
+    params:  # Algorithm hyper-parameters
       replay_buffer_size: 1000000
       batch_size: 256
 
-      # lr_actor: 0.001
-      # lr_critic: 0.001
+      lr_actor: 0.001
+      lr_critic: 0.001
       alpha: 0.2
 
-  nodes:
+  nodes:  # Metric recording node here
     MetricNode:
       num: 1
 
 $train:
+  # Training node configuration
   env:
     params:
-      sleep_time: 0.006
+      sleep_time: 0.005  # Sleep in envs to make sampling slower, keeping update-to-data ratio
 
   nodes:
     EnvNode:
@@ -77,9 +78,10 @@ $train:
     OptimizerNode:
       num: 1
       update_interval: 0.5
-      devices: [cuda:1]
+      devices: [cuda:0]
 
 $test:
+  # Testing node configuration
   nodes:
     EnvNode:
       num: 1
@@ -87,7 +89,7 @@ $test:
       num: 1
       batch_size: 1
       devices: [cpu]
-      do_tick: False
-      optimizer_namespace: $train
+      do_tick: False  # Required, prevent test steps to be counted in total steps
+      optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
       num: 1

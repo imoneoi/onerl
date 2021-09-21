@@ -1,61 +1,85 @@
-profile: True
-profile_log_path: profile_log
+$global:
+  # Profiling
+  # profile: True
+  # profile_log_path: profile_log
 
-env:
-  import: gym
-  name: make
-  params:
-    id: CartPole-v0
-  frame_stack: 1
+  # Environment
+  env:
+    import: gym
+    name: make
+    params:
+      id: CartPole-v0
+    frame_stack: 1
 
-  policy_batch_size: 8
+  # Algorithm
+  algorithm:
+    import: onerl.algorithms
+    name: DDQNAlgorithm
+    network:  # Network architecture
+      feature_extractor:
+        import: torch.nn
+        name: Identity
+      critic:
+        import: onerl.networks
+        name: MLP
+        params:
+          input_dims: 4
+          num_hidden: [128, 128]
+          output_dims: 2
 
-algorithm:
-  import: onerl.algorithms
-  name: DDQNAlgorithm
-  network:
-    feature_extractor:
-      import: onerl.networks
-      name: MLP
-      params:
-        input_dims: 4
-        num_hidden: [128]
-        output_dims: 128
-    critic:
-      import: onerl.networks
-      name: MLP
-      params:
-        input_dims: 128
-        num_hidden: [128]
-        output_dims: 2
-  params:
-    replay_buffer_size: 20000
+    params:  # Algorithm hyper-parameters
+      replay_buffer_size: 20000
 
-    lr: 0.001
-    batch_size: 32
-    gamma: 0.9
+      lr: 0.001
+      batch_size: 256
+      gamma: 0.99
 
-    target_update_freq: 320
+      target_update_freq: 50
 
-    eps_start: 1.0
-    eps_final: 0.1
-    eps_final_steps: 5000
+      eps_start: 1.0
+      eps_final: 0.1
+      eps_final_steps: 5000
 
-nodes:
-  EnvNode:
-    num: 8
-  PolicyNode:
-    num: 1
-    devices: [cuda:0]
-  SchedulerNode:
-    num: 1
-  ReplayBufferNode:
-    num: 1
-  SamplerNode:
-    num: 1
-  OptimizerNode:
-    num: 1
-    update_interval: 1.0
-    devices: [cuda:0]
-  MetricNode:
-    num: 1
+  nodes:  # Metric recording node here
+    MetricNode:
+      num: 1
+
+$train:
+  # Training node configuration
+  nodes:
+    EnvNode:
+      num: 8
+    PolicyNode:
+      num: 1
+      devices: [cuda:0]
+      batch_size: 8
+    SchedulerNode:
+      num: 1
+    ReplayBufferNode:
+      num: 1
+    SamplerNode:
+      num: 1
+    OptimizerNode:
+      num: 1
+      update_interval: 1.0
+      devices: [cuda:0]
+
+$test:
+  # Testing special configuration (override)
+  algorithm:
+    params:
+      eps_start: 0.1
+      eps_final: 0.1
+
+  # Testing node configuration
+  nodes:
+    EnvNode:
+      num: 1
+    PolicyNode:
+      num: 1
+      batch_size: 1
+      devices: [cpu]
+      do_tick: False  # Required, prevent test steps to be counted in total steps
+      optimizer_namespace: $train  # Required, specify where to load parameters
+    SchedulerNode:
+      num: 1
