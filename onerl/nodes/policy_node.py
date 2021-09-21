@@ -22,11 +22,13 @@ class PolicyNode(Node):
         policy_version = -1
         # batch
         batch_size = self.config["batch_size"]
+
+        is_cpu = device.type == "cpu"
         batch_cpu = torch.zeros((batch_size, self.ns_config["env"]["frame_stack"],
                                  *self.ns_config["env"]["obs_shape"]),
-                                dtype=numpy_to_torch_dtype_dict[self.ns_config["env"]["obs_dtype"]])
+                                dtype=numpy_to_torch_dtype_dict[self.ns_config["env"]["obs_dtype"]],
+                                pin_memory=not is_cpu)
         # batch (cpu-only mode)
-        is_cpu = device.type == "cpu"
         if is_cpu:
             batch = batch_cpu
         else:
@@ -84,7 +86,7 @@ class PolicyNode(Node):
             for idx, env_name in enumerate(env_queue):
                 batch_cpu[idx] = obs_shared[env_name]
             if not is_cpu:
-                batch.copy_(batch_cpu)
+                batch.copy_(batch_cpu, non_blocking=True)
 
             # get ticks
             self.setstate("step")
