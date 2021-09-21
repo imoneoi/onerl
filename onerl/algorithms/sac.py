@@ -108,10 +108,14 @@ class SACAlgorithm(Algorithm):
         return squashed_act
 
     def sync_weight(self):
-        for k, dst in self.target_network.items():
-            src = self.network[k]
-            for d, s in zip(dst.parameters(), src.parameters()):
-                d.data.copy_(d.data * (1.0 - self.tau) + s.data * self.tau)
+        # Ref: stable baselines 3
+        # https://github.com/DLR-RM/stable-baselines3/blob/914bc10a0dd7b522172e538771a69055853ecf94/stable_baselines3/common/utils.py#L393
+        with torch.no_grad():
+            for k, dst in self.target_network.items():
+                src = self.network[k]
+                for d, s in zip(dst.parameters(), src.parameters()):
+                    d.data.mul_(1 - self.tau)
+                    torch.add(d.data, s.data, alpha=self.tau, out=d.data)
 
     def learn(self, batch: BatchCuda) -> dict:
         # TODO: WARNING: DistributedDataParallel enabled here
