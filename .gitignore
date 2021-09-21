@@ -3,6 +3,10 @@ profile_log/
 log/
 wandb/
 
+# Experiments & Notes
+experiments/
+notes/
+
 # IDEA
 .idea
 
