@@ -4,6 +4,7 @@ from onerl.algorithms.random import RandomAlgorithm
 
 from onerl.algorithms.ddqn import DDQNAlgorithm
 from onerl.algorithms.vsn import VSNAlgorithm
+from onerl.algorithms.fhn import FHNAlgorithm
 
 from onerl.algorithms.sac import SACAlgorithm
 
@@ -21,6 +22,7 @@ __all__ = [
     # Discrete
     "DDQNAlgorithm",
     "VSNAlgorithm",
+    "FHNAlgorithm",
 
     # Continuous
     "SACAlgorithm",
