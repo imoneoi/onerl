@@ -7,6 +7,7 @@ from onerl.algorithms.vsn import VSNAlgorithm
 from onerl.algorithms.fhn import FHNAlgorithm
 
 from onerl.algorithms.sac import SACAlgorithm
+from onerl.algorithms.fhac import FHACAlgorithm
 
 from onerl.algorithms.drp import DRPAlgorithm
 from onerl.algorithms.hwm_cvp import HWMCVPAlgorithm
@@ -26,6 +27,7 @@ __all__ = [
 
     # Continuous
     "SACAlgorithm",
+    "FHACAlgorithm",
 
     # Model-based
     "DRPAlgorithm",

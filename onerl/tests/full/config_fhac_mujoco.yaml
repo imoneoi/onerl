@@ -1,0 +1,84 @@
+$global:
+  # profile: True
+  # profile_log_path: profile_log
+
+  env:
+    import: examples.mujoco_env
+    name: create_mujoco_env
+    params:
+      name: HalfCheetah-v3
+    frame_stack: 1
+
+  algorithm:
+    import: onerl.algorithms
+    name: FHACAlgorithm
+    network:
+      feature_extractor:
+        import: torch.nn
+        name: Flatten
+      actor:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 17   # N(feature)
+          output_dims: 6  # N(action)
+          num_hidden: [256, 256]
+      critic:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 23  # N(feature) + N(action)
+          output_dims: 64
+          num_hidden: [256, 256]
+
+    params:
+      replay_buffer_size: 1000000
+      batch_size: 256
+
+      lr_actor: 0.001
+      lr_critic: 0.001
+
+      h: 64
+      lam: 1.0
+
+  nodes:
+    MetricNode:
+      num: 1
+
+$train:
+  env:
+    params:
+      sleep_time: 0.003
+
+  nodes:
+    EnvNode:
+      num: 1
+    PolicyNode:
+      num: 1
+      batch_size: 1
+      devices: [cpu]
+    SchedulerNode:
+      num: 1
+    ReplayBufferNode:
+      num: 1
+    SamplerNode:
+      num: 1
+    OptimizerNode:
+      num: 1
+      update_interval: 0.5
+      devices: [cuda:1]
+
+$test:
+  nodes:
+    EnvNode:
+      num: 1
+    PolicyNode:
+      num: 1
+      batch_size: 1
+      devices: [cpu]
+      do_tick: False
+      optimizer_namespace: $train
+    SchedulerNode:
+      num: 1
