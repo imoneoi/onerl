@@ -102,7 +102,11 @@ class SACAlgorithm(Algorithm):
             # apply squashing correction to log prob
             # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
             # in appendix C to get some understanding of this equation.
-            log_prob = log_prob - torch.log((1 - squashed_act ** 2) + self.__eps).sum(-1)
+            
+            # TODO: action_scale 
+            # action_scale = (self.action_space.high - self.action_space.low) / 2.0
+            action_scale = 1.0
+            log_prob = log_prob - torch.log(action_scale * (1 - squashed_act ** 2) + self.__eps).sum(-1)
             return squashed_act, log_prob
 
         return squashed_act
