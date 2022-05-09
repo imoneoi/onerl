@@ -13,10 +13,10 @@ class FHACAlgorithm(Algorithm):
     def __init__(
         self, network: dict, env_params: dict,
         # hyper-parameters
-        lr_actor: float,
-        lr_critic: float,
-        h: int,
-        lam: float,
+        lr_actor: float = 1e-3,
+        lr_critic: float = 1e-3,
+        h: int = 64,
+        # lam: float,
         # exploration
         exploration_len: int = 10000,
         noise_scale: float = 0.2,
@@ -32,7 +32,7 @@ class FHACAlgorithm(Algorithm):
         self.lr_actor = lr_actor
         self.lr_critic = lr_critic
         self.h = h
-        self.lam = lam
+        # self.lam = lam
         # exploration
         self.noise_scale = noise_scale
         self.exploration_len = exploration_len
@@ -91,7 +91,7 @@ class FHACAlgorithm(Algorithm):
         with torch.no_grad():
             q_mean = torch.mean(q)
         # back prop
-        q_weight = torch.arange(self.h, 0, -1, device=q.device).unsqueeze(0)
+        q_weight = torch.arange(self.h, 0, -1, device=q.device).unsqueeze(0) / self.h
         q_loss = torch.mean((q_weight * (q - update_target)) ** 2)
         # q_reg_loss = torch.mean((q_weight[:, 1:] * (q[:, 1:] - q.detach()[:, :-1])) ** 2)
         # q_tot_loss = q_loss + self.lam * q_reg_loss
