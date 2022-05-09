@@ -7,6 +7,9 @@ wandb/
 experiments/
 notes/
 
+# Models
+models/
+
 # IDEA
 .idea
 
