@@ -12,6 +12,7 @@ from onerl.algorithms.fhac import FHACAlgorithm
 from onerl.algorithms.drp import DRPAlgorithm
 from onerl.algorithms.hwm_cvp import HWMCVPAlgorithm
 from onerl.algorithms.wmzero import WMZeroAlgorithm
+from onerl.algorithms.dt2 import DT2Algorithm
 
 __all__ = [
     # Base
@@ -32,5 +33,6 @@ __all__ = [
     # Model-based
     "DRPAlgorithm",
     "HWMCVPAlgorithm",
-    "WMZeroAlgorithm"
+    "WMZeroAlgorithm",
+    "DT2Algorithm"
 ]
