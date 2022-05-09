@@ -19,7 +19,9 @@ class SamplerNode(Node):
                "Batch size must be divisible by number of samplers."
 
         batch_size = tot_batch_size // num_samplers
-        frame_stack = ns_config["env"]["frame_stack"] + 1
+        frame_stack = ns_config["env"].get("sample_frame_stack", None)
+        if frame_stack is None:
+            frame_stack = ns_config["env"]["frame_stack"] + 1
         for obj in objects:
             obj["batch"] = BatchShared({
                 k: ((batch_size, frame_stack, *batch_shape), batch_dtype)
@@ -78,20 +80,18 @@ class SamplerNode(Node):
             local_idx[:] = shared_idx
             shared_lock.release()
 
-            # sample (ignore idx ... idx + protect range)
-            # shape (N, N_Buffer)
+            # sample (idx + protect range ... end)
+            # shape (N_Buffer, N)
             batch_size_per_buffer = batch_size // num_buffers
-            sample_start = (local_idx + protect_range) % local_size
-            sample_len = local_size - protect_range
-            sample_idx = (sample_start +
-                          np.random.randint(0, sample_len, (batch_size_per_buffer, num_buffers))) % local_size
-            # transpose --> (N_Buffer, N)
-            sample_idx = sample_idx.transpose()
+            sample_start = (local_idx + protect_range).reshape(-1, 1)
+            sample_len = (local_size - protect_range).reshape(-1, 1)
+            sample_idx = sample_start + \
+                np.sort(np.random.randint(0, sample_len, (num_buffers, batch_size_per_buffer)), axis=-1)
             # add frame stacking
             sample_idx = np.expand_dims(sample_idx, -1) + (np.arange(frame_stack) - (frame_stack - 1))
             # --> (N_Buffer, N_BS, N_FS)
             # circular buffer operation
-            sample_idx = (sample_idx + local_size.reshape((-1, 1, 1))) % local_size.reshape((-1, 1, 1))
+            sample_idx = sample_idx % local_size.reshape((-1, 1, 1))
 
             # batch query preparation
             sample_idx = sample_idx.reshape(-1)

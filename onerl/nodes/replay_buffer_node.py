@@ -23,7 +23,7 @@ class ReplayBufferNode(Node):
             "buffer": BatchShared({
                 k: ((num_buffers, single_size, *batch_shape), batch_dtype)
                 for k, (batch_shape, batch_dtype) in ns_config["env"]["batch"].items()
-            }),
+            }, init_ready=True),
             "size": SharedArray(num_buffers, dtype=np.int64),
             "idx": SharedArray(num_buffers, dtype=np.int64),
             "lock": mp.Lock()
