@@ -48,7 +48,7 @@ class EnvNode(Node):
             obj["act"] = SharedArray(ns_config["env"]["act_shape"], ns_config["env"]["act_dtype"])
 
             # log to replay
-            obj["log"] = BatchShared(ns_config["env"]["batch"])
+            obj["log"] = BatchShared(ns_config["env"]["batch"], init_ready=True)
 
         return objects
 

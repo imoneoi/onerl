@@ -1,17 +1,18 @@
 $global:
-  profile: True
-  profile_log_path: profile_log
+#  profile: True
+#  profile_log_path: profile_log
 
   env:
     import: onerl.tests.counter.counter_env
     name: CounterEnv
-    frame_stack: 5
+    frame_stack: 20
+    sample_frame_stack: 40
 
   algorithm:
     import: onerl.tests.counter.counter_algorithm
     name: CounterAlgorithm
     params:
-      replay_buffer_size: 10000
+      replay_buffer_size: 1000000
       batch_size: 32
 
   nodes:

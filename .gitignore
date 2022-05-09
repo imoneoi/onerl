@@ -2,6 +2,7 @@
 profile_log/
 log/
 wandb/
+models/
 
 # IDEA
 .idea

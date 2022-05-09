@@ -1,9 +1,3 @@
-try:
-    from local_debug_logger import local_trace
-except ImportError:
-    def local_trace():
-        pass
-
 import gym
 import numpy as np
 import time

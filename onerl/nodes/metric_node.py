@@ -20,11 +20,14 @@ class MetricNode(Node):
         })
         return objects
 
-    def get_run_name(self):
+    def get_run_label(self):
         env_name = self.ns_config.get("env", {}).get("name", "")
         algo_name = self.ns_config.get("algorithm", {}).get("name", "Unknown")
 
-        return "OneRL {} {} {}".format(env_name, algo_name, time.strftime("%H:%M %m-%d %Y"))
+        return {
+            "project": "OneRL-{}".format(env_name),
+            "name": "{} {}".format(algo_name, time.strftime("%H:%M %m-%d %Y"))
+        }
 
     def run(self):
         # shared objs
@@ -38,7 +41,7 @@ class MetricNode(Node):
         utd_log_interval = self.config.get("utd_log_interval", 1.0)
 
         # initialize
-        wandb.init(name=self.get_run_name(), config=self.ns_config)
+        wandb.init(**self.get_run_label(), config=self.ns_config)
         # log global objects
         global_objects_log_file = os.path.join(wandb.run.dir, "global_objects.json")
         with open(global_objects_log_file, "wt") as f:

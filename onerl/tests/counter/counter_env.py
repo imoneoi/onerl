@@ -2,6 +2,7 @@ from abc import ABC
 
 import numpy as np
 import gym
+import time
 
 
 class CounterEnv(gym.Env, ABC):
@@ -21,6 +22,8 @@ class CounterEnv(gym.Env, ABC):
 
     def step(self, action):
         assert not self.need_reset
+
+        time.sleep(0.001)
 
         self.ticks += 1
         self.need_reset = (self.ticks % 1000) == 0
