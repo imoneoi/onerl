@@ -83,7 +83,7 @@ class FHNAlgorithm(Algorithm):
         with torch.no_grad():
             u_mean = torch.mean(torch.mean(q, dim=-1))
         # back prop
-        loss_weight = torch.arange(self.h, 0, -1, device=q.device)
+        loss_weight = torch.arange(self.h, 0, -1, device=q.device) / self.h
         # loss_weight = loss_weight / torch.sum(loss_weight)
         loss = torch.mean(((q - update_target) * loss_weight.unsqueeze(0)) ** 2)
         self.optimizer.zero_grad()
