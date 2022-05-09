@@ -22,7 +22,7 @@ class MLP(nn.Module):
                  input_dims: int,
                  output_dims: Optional[int] = None,
                  num_hidden: Optional[list] = None,
-                 norm_type: str = "group_norm",
+                 norm_type: str = "none",
                  groups: int = 16):
         super().__init__()
 
