@@ -37,7 +37,7 @@ class ResnetEncoder(nn.Module):
                  in_channels: int,
                  num_layers: int = 3,
                  start_channels: int = 16,
-                 norm_type: str = "group_norm",
+                 norm_type: str = "batch_norm",
                  groups: int = 8):
         super().__init__()
         # network architecture
