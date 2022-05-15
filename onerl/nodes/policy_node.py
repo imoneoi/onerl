@@ -56,7 +56,7 @@ class PolicyNode(Node):
 
         if node_optimizer is not None:
             shared_policy_state_dict = optimizer_shared["update_state_dict"]
-            shared_policy_state_dict.start()
+            shared_policy_state_dict.initialize("subscriber", device)
         else:
             self.log("OptimizerNode not found, unable to update policy.")
 
@@ -70,7 +70,8 @@ class PolicyNode(Node):
                 optimizer_shared["update_lock"].release()
 
                 if new_version > policy_version:
-                    shared_policy_state_dict.save_to(local_policy_state_dict)
+                    # TODO: may race condition here? (if skip 2 policy updates)
+                    shared_policy_state_dict.receive(local_policy_state_dict)
                     policy_version = new_version
 
             # recv request

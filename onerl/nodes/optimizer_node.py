@@ -80,7 +80,7 @@ class OptimizerNode(Node):
         if self.node_rank == 0:
             local_update_state_dict = algorithm.policy_state_dict()
             shared_update_state_dict = self.objects["update_state_dict"]
-            shared_update_state_dict.start()
+            shared_update_state_dict.initialize("publisher", device)
 
         # save model
         last_save_model_time = time.time()
@@ -121,7 +121,7 @@ class OptimizerNode(Node):
 
                     # update shared policy (lock free)
                     self.setstate("update_policy")
-                    shared_update_state_dict.load_from(local_update_state_dict)
+                    shared_update_state_dict.publish(local_update_state_dict)
 
                     self.objects["update_lock"].acquire()
                     self.objects["update_version"].value = current_model_version

@@ -1,8 +1,7 @@
-import multiprocessing as mp
-import ctypes
-
 import torch
 import numpy as np
+
+from onerl.utils.dtype import numpy_to_torch_dtype_dict
 
 
 class SharedArray:
@@ -10,16 +9,23 @@ class SharedArray:
         self.shape = shape
         self.dtype = dtype
 
-        self.arr = mp.Array(ctypes.c_uint8, int(np.prod(shape) * np.dtype(dtype).itemsize), lock=False)
+        self.tensor = torch.zeros(shape, dtype=numpy_to_torch_dtype_dict[dtype])
+        self.tensor.share_memory_()
+        assert self.tensor.is_shared()
+
+    def pin_memory_(self, device):
+        with torch.cuda.device(device):
+            result = torch.cuda.cudart().cudaHostRegister(self.tensor.data_ptr(), self.tensor.numel() * self.tensor.element_size(), 0)
+            assert result.value == 0, "Failed to pin memory."
+
+        assert self.tensor.is_pinned()
+        return self
 
     def get(self):
-        return np.frombuffer(self.arr, dtype=self.dtype).reshape(self.shape)
+        return self.tensor.numpy()
 
     def get_torch(self):
-        # The torch Tensor and numpy array will share their underlying memory locations,
-        # and changing one will change the other.
-        # https://pytorch.org/tutorials/beginner/former_torchies/tensor_tutorial.html
-        return torch.from_numpy(self.get())
+        return self.tensor
 
     def __repr__(self):
         return "<SharedArray shape={}, dtype={}>".format(self.shape, self.dtype)

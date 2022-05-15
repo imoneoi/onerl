@@ -4,6 +4,8 @@ import os
 
 import torch
 
+from faster_fifo import Queue
+
 import setproctitle
 
 
@@ -36,6 +38,10 @@ class Node:
 
         # Proc title for visualization
         setproctitle.setproctitle("-OneRL- {}".format(self.node_name))
+        # CUDNN Benchmark
+        if torch.backends.cudnn.is_available():
+            torch.backends.cudnn.benchmark = True
+            torch.backends.cudnn.deterministic = False
         # Limit torch to 1 thread
         torch.set_num_threads(1)
 
@@ -52,7 +58,7 @@ class Node:
     @staticmethod
     def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
         # create queues
-        return [{"queue": mp.SimpleQueue()} for _ in range(num)]
+        return [{"queue": Queue(max_size_bytes=1048576)} for _ in range(num)]
 
     # Node utils
     @staticmethod
