@@ -21,13 +21,26 @@ class MetricNode(Node):
         return objects
 
     def get_run_label(self):
-        env_name = self.ns_config.get("env", {}).get("name", "")
-        algo_name = self.ns_config.get("algorithm", {}).get("name", "Unknown")
+        env_config = self.ns_config.get("env", {})
+        algo_config = self.ns_config.get("algorithm", {})
+
+        env_name = env_config.get("name", "")
+        env_params_str = ", ".join(k + "=" + v.__repr__() for k, v in env_config.get("params", {}).items())
+
+        algo_name = algo_config.get("name", "UnknownAlgorithm")
 
         return {
-            "project": "OneRL-{}".format(env_name),
+            "project": "{} {}".format(env_name, env_params_str),
             "name": "{} {}".format(algo_name, time.strftime("%H:%M %m-%d %Y"))
         }
+
+    def object_to_string_dict(self, obj):
+        if isinstance(obj, list):
+            return [self.object_to_string_dict(x) for x in obj]
+        elif isinstance(obj, dict):
+            return {k: self.object_to_string_dict(v) for k, v in obj.items()}
+        else:
+            return obj.__repr__()
 
     def run(self):
         # shared objs
@@ -41,13 +54,10 @@ class MetricNode(Node):
         utd_log_interval = self.config.get("utd_log_interval", 1.0)
 
         # initialize
-        wandb.init(**self.get_run_label(), config=self.ns_config)
-        # log global objects
-        global_objects_log_file = os.path.join(wandb.run.dir, "global_objects.json")
-        with open(global_objects_log_file, "wt") as f:
-            f.write(self.global_objects.__repr__())
-            f.close()
-        wandb.save(global_objects_log_file)
+        wandb.init(**self.get_run_label(), config={
+            "config": self.ns_config,
+            "objects": self.object_to_string_dict(self.global_objects)
+        })
 
         # event loop
         while True:
@@ -77,6 +87,6 @@ class MetricNode(Node):
             if "save_model" in metric:
                 wandb.save(metric["save_filename"])
                 continue
-
+    
             # log metric
             wandb.log(metric, step=tick)
