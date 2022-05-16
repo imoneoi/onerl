@@ -8,7 +8,7 @@ $global:
     import: examples.envs.mujoco_env
     name: create_mujoco_env
     params:
-      name: HalfCheetah-v3
+      name: Humanoid-v3
     frame_stack: 1
 
   # Algorithm
@@ -24,15 +24,15 @@ $global:
         name: MLP
         params:
           norm_type: none
-          input_dims: 17  # N(state)
+          input_dims: 376  # N(state)
           num_hidden: [256, 256]
-          output_dims: 12  # 2 * N(action)
+          output_dims: 34  # 2 * N(action)
       critic1:
         import: onerl.networks
         name: MLP
         params:
           norm_type: none
-          input_dims: 23  # N(state) + N(action)
+          input_dims: 393  # N(state) + N(action)
           num_hidden: [256, 256]
           output_dims: 1
       critic2:
@@ -40,7 +40,7 @@ $global:
         name: MLP
         params:
           norm_type: none
-          input_dims: 23  # N(state) + N(action)
+          input_dims: 393  # N(state) + N(action)
           num_hidden: [256, 256]
           output_dims: 1
 
@@ -60,7 +60,7 @@ $train:
   # Training node configuration
   env:
     params:
-      sleep_time: 0.005  # Sleep in envs to make sampling slower, keeping update-to-data ratio
+      sleep_time: 0.004  # Sleep in envs to make sampling slower, keeping update-to-data ratio
 
   nodes:
     EnvNode:
@@ -79,6 +79,8 @@ $train:
       num: 1
       update_interval: 0.5
       devices: [cuda:0]
+    VisualizerNode:
+      num: 1
 
 $test:
   # Testing node configuration
@@ -92,4 +94,6 @@ $test:
       do_tick: False  # Required, prevent test steps to be counted in total steps
       optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
+      num: 1
+    VisualizerNode:
       num: 1
