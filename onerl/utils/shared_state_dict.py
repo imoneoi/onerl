@@ -29,7 +29,7 @@ class SharedStateDict:
             elif type == "subscriber":
                 # Create pinned memory buffer
                 with torch.cuda.device(device):
-                    self.local_cpu_buffer = OrderedDict((k, torch.zeros_like(v, pin_memory=True)) for k, v in self.shared_cpu_tensor)
+                    self.local_cpu_buffer = OrderedDict((k, torch.zeros_like(v, pin_memory=True)) for k, v in self.shared_cpu_tensor.items())
 
     def copy_state_dict(self, src, dst):
         with torch.no_grad():

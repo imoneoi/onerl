@@ -19,7 +19,6 @@ class SharedArray:
             assert result.value == 0, "Failed to pin memory."
 
         assert self.tensor.is_pinned()
-        return self
 
     def get(self):
         return self.tensor.numpy()
