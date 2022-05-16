@@ -17,7 +17,7 @@ class Algorithm(nn.Module):
     def forward(self, obs: torch.Tensor, ticks: int) -> torch.Tensor:
         raise NotImplementedError("Algorithm: forward not implemented.")
 
-    def learn(self, batch: BatchCuda) -> dict:
+    def learn(self, batch: BatchCuda, ticks: int) -> dict:
         raise NotImplementedError("Algorithm: learn not implemented.")
 
     def policy_state_dict(self) -> OrderedDict:

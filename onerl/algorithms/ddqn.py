@@ -69,7 +69,7 @@ class DDQNAlgorithm(Algorithm):
             for k, v in self.target_network.items():
                 v.load_state_dict(self.network[k].state_dict())
 
-    def learn(self, batch: BatchCuda) -> dict:
+    def learn(self, batch: BatchCuda, ticks: int) -> dict:
         # TODO: WARNING: DistributedDataParallel enabled here
         # TODO: prioritized replay
         with torch.no_grad():

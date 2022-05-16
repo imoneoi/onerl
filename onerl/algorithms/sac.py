@@ -23,6 +23,7 @@ class SACAlgorithm(Algorithm):
             lr_alpha: float = 3e-4,
             gamma: float = 0.99,
             tau: float = 0.005,
+            start_steps: int = 10000,
             # exploration
             alpha: Optional[float] = None,
             target_entropy: Optional[float] = None,
@@ -42,6 +43,8 @@ class SACAlgorithm(Algorithm):
         self.lr_critic = lr_critic
         self.lr_alpha = lr_alpha
         self.gamma = gamma
+
+        self.start_steps = start_steps
         # alpha
         if alpha is not None:
             # fixed alpha
@@ -77,6 +80,11 @@ class SACAlgorithm(Algorithm):
                 ticks: int,
                 feature: Optional[torch.Tensor] = None,
                 return_log_prob: bool = False) -> torch.Tensor:
+        # pure random start
+        if (ticks is not None) and (ticks < self.start_steps):
+            # (BS, ACT_SHAPE)
+            return torch.rand((obs.shape[0], *self.env_params["act_shape"])) * 2 - 1
+
         # network forward
         if feature is None:
             feature = self.network["feature_extractor"](obs)
@@ -117,12 +125,16 @@ class SACAlgorithm(Algorithm):
                     d.data.mul_(1 - self.tau)
                     torch.add(d.data, s.data, alpha=self.tau, out=d.data)
 
-    def learn(self, batch: BatchCuda) -> dict:
+    def learn(self, batch: BatchCuda, ticks: int) -> dict:
+        # start training at start_steps
+        if ticks < self.start_steps:
+            return {}
+
         # TODO: WARNING: DistributedDataParallel enabled here
         with torch.no_grad():
             next_obs = batch.data["obs"][:, 1:]
 
-            next_act, next_log_prob = self(next_obs, -1, return_log_prob=True)
+            next_act, next_log_prob = self(next_obs, ticks=ticks, return_log_prob=True)
 
             next_obs_feature = self.target_network["feature_extractor"](next_obs)
             next_q = torch.min(
@@ -138,9 +150,6 @@ class SACAlgorithm(Algorithm):
         act = batch.data["act"][:, -2]
         q1 = self.network["critic1"](obs_feature, act).view(-1)
         q2 = self.network["critic2"](obs_feature, act).view(-1)
-        # q mean (for visualization)
-        q1_mean = torch.mean(q1)
-        q2_mean = torch.mean(q2)
         # back prop
         q1_loss = torch.mean((q1 - update_target) ** 2)
         q2_loss = torch.mean((q2 - update_target) ** 2)
@@ -153,13 +162,10 @@ class SACAlgorithm(Algorithm):
         # actor policy gradient
         # stop feature extractor gradient
         obs_feature_detached = obs_feature.detach()
-        actor_act, actor_log_prob = self(None, -1, feature=obs_feature_detached, return_log_prob=True)
+        actor_act, actor_log_prob = self(None, ticks=ticks, feature=obs_feature_detached, return_log_prob=True)
         current_q1a = self.network["critic1"](obs_feature_detached, actor_act).view(-1)
         current_q2a = self.network["critic2"](obs_feature_detached, actor_act).view(-1)
         actor_loss = torch.mean(self.alpha * actor_log_prob - torch.min(current_q1a, current_q2a))
-        # q_a mean (for visualization)
-        q1_a_mean = torch.mean(current_q1a)
-        q2_a_mean = torch.mean(current_q2a)
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
@@ -183,11 +189,7 @@ class SACAlgorithm(Algorithm):
             "actor_loss": actor_loss.item(),
             "alpha_loss": alpha_loss.item() if alpha_loss is not None else None,
 
-            "alpha": self.alpha,
-            "q1_mean": q1_mean.item(),
-            "q2_mean": q2_mean.item(),
-            "q1_a_mean": q1_a_mean.item(),
-            "q2_a_mean": q2_a_mean.item()
+            "alpha": self.alpha
         }
 
     def policy_state_dict(self) -> OrderedDict:

@@ -71,6 +71,10 @@ class OptimizerNode(Node):
         algorithm = self.create_algo(self.ns_config, device, use_ddp)
         algorithm.train()
 
+        # ticks
+        metric_shared = self.global_objects.get(self.find("MetricNode"), {})
+        shared_tick = metric_shared.get("tick", None)
+
         # updater
         last_update_time = time.time()
         current_model_version = 0
@@ -104,7 +108,7 @@ class OptimizerNode(Node):
 
             # optimize
             self.setstate("step")
-            metric = algorithm.learn(batch)
+            metric = algorithm.learn(batch, shared_tick.value)
             if metric is not None:
                 # update to data logging
                 if self.node_rank == 0:
