@@ -3,6 +3,8 @@ from abc import ABC
 import numpy as np
 import gym
 
+from onerl.tests.test_assert import test_assert
+
 
 class CounterEnv(gym.Env, ABC):
     def __init__(self):
@@ -14,13 +16,15 @@ class CounterEnv(gym.Env, ABC):
         self.action_space = gym.spaces.Discrete(10)
 
     def reset(self):
-        assert self.need_reset
+        # Assertion 1: Reset if and only if done
+        test_assert(self.need_reset, "Env is reset() when not needed")
 
         self.need_reset = False
         return np.array([self.ticks, -1], dtype=np.int64)
 
     def step(self, action):
-        assert not self.need_reset
+        # Assertion 1: Reset if and only if done
+        test_assert(not self.need_reset, "Env is not reset after epoch done")
 
         self.ticks += 1
         self.need_reset = (self.ticks % 1000) == 0
