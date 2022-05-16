@@ -38,6 +38,12 @@ class EnvNode(Node):
             "done": ((), np.float32)
         }
 
+        # offline visualization
+        if hasattr(sample_env, "load_state") and hasattr(sample_env, "save_state"):
+            sample_vis_state = sample_env.save_state()
+            ns_config["env"]["vis_state_shape"] = sample_vis_state.shape
+            ns_config["env"]["vis_state_dtype"] = sample_vis_state.dtype
+
     @staticmethod
     def node_create_shared_objects(node_class: str, num: int, ns_config: dict):
         objects = Node.node_create_shared_objects(node_class, num, ns_config)
@@ -49,6 +55,10 @@ class EnvNode(Node):
 
             # log to replay
             obj["log"] = BatchShared(ns_config["env"]["batch"], init_ready=True)
+
+            # offline visualization
+            if ("vis_state_shape" in ns_config["env"]) and (Node.node_count("VisualizerNode", ns_config) > 0):
+                obj["vis_state"] = SharedArray(ns_config["env"]["vis_state_shape"], ns_config["env"]["vis_state_dtype"])
 
         return objects
 
@@ -64,6 +74,8 @@ class EnvNode(Node):
         shared_obs = self.objects["obs"].get()
         shared_act = self.objects["act"].get()
         shared_log = self.objects["log"].get()
+
+        shared_vis_state = self.objects["vis_state"].get() if "vis_state" in self.objects else None
 
         # find nodes
         node_scheduler = self.find("SchedulerNode")
@@ -112,3 +124,7 @@ class EnvNode(Node):
 
                 self.log_metric({"{}@episode_reward".format(self.node_ns): tot_reward})
                 tot_reward = 0
+
+            # offline visualization
+            if shared_vis_state is not None:
+                shared_vis_state[:] = env.save_state()

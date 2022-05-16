@@ -1,37 +1,55 @@
+import imp
 import cv2
 
 import numpy as np
 
 from onerl.nodes.node import Node
+from onerl.nodes.env_node import EnvNode
 
 
 class VisualizerNode(Node):
     def run(self):
-        # shared obs
-        shared_obs = [self.global_objects[k]["obs"].get() for k in self.find_all("EnvNode")]
+        vis_mode = "offline" if "vis_state_shape" in self.ns_config["env"] else "obs"
+
+        if vis_mode == "offline":
+            shared_state = [self.global_objects[k]["vis_state"].get() for k in self.find_all("EnvNode")]
+            num_envs = len(shared_state)
+
+            # create envs for render
+            render_env = EnvNode.create_env(self.ns_config)
+
+            # image shape
+            img_sample = render_env.render(mode="rgb_array")
+            img_w, img_h, img_c = img_sample.shape
+            img_dtype = img_sample.dtype
+        elif vis_mode == "obs":
+            # shared obs
+            shared_obs = [self.global_objects[k]["obs"].get() for k in self.find_all("EnvNode")]
+            num_envs = len(shared_obs)
+
+            # image shape
+            # FS C H W
+            if len(shared_obs[0].shape) == 4:
+                _, img_c, img_h, img_w = shared_obs[0].shape
+                img_dtype = shared_obs[0].dtype
+
+                assert img_c <= 3, "VisualizerNode: image must have <= 3 channels"
+            else:
+                assert False, "VisualizerNode: Unknown observation image format"
 
         # settings
         vis_delay = 1000 // self.config.get("fps", 30)
 
         # grid size (w > h, maximum h) by integer factorization
-        grid_n = len(shared_obs)
+        grid_n = num_envs
         grid_h = int(np.sqrt(grid_n))
         while grid_n % grid_h:
             grid_h -= 1
         grid_w = grid_n // grid_h
 
-        # grid
-        obs_dtype = shared_obs[0].dtype
-        if len(shared_obs[0].shape) == 4:
-            # RGB / RG
-            # FS C H W
-            img_fs, img_c, img_h, img_w = shared_obs[0].shape
-            assert img_c <= 3, "VisualizerNode: image must have <= 3 channels"
-
-            vis_c = 1 if img_c == 1 else 3
-            obs_all = np.zeros((img_h * grid_h, img_w * grid_w, vis_c), dtype=obs_dtype)
-        else:
-            assert False, "VisualizerNode: Unknown observation image format"
+        # RGB / RG
+        full_img_c = 1 if img_c == 1 else 3
+        full_img = np.zeros((img_h * grid_h, img_w * grid_w, full_img_c), dtype=img_dtype)
 
         # window
         cv2.setNumThreads(1)
@@ -42,9 +60,16 @@ class VisualizerNode(Node):
             for y in range(grid_h):
                 for x in range(grid_w):
                     idx = y * grid_w + x
-                    obs_all[img_h * y: img_h * (y + 1), img_w * x: img_w * (x + 1), :img_c] = \
-                        shared_obs[idx][-1].transpose((1, 2, 0))  # C H W --> H W C
-            obs_all_bgr = cv2.cvtColor(obs_all, cv2.COLOR_RGB2BGR)
+
+                    if vis_mode == "obs":
+                        env_img = shared_obs[idx][-1].transpose((1, 2, 0))  # C H W --> H W C
+                    elif vis_mode == "offline":
+                        render_env.load_state(shared_state[idx])
+                        env_img = render_env.render(mode="rgb_array")
+
+                    full_img[img_h * y: img_h * (y + 1), img_w * x: img_w * (x + 1), :img_c] = env_img
+
+            obs_all_bgr = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
 
             # show
             self.setstate("show")
