@@ -57,14 +57,9 @@ $global:
       num: 1
 
 $train:
-  # Training node configuration
-  env:
-    params:
-      sleep_time: 0.004  # Sleep in envs to make sampling slower, keeping update-to-data ratio
-
   nodes:
     EnvNode:
-      num: 1
+      num: 2
     PolicyNode:
       num: 1
       batch_size: 1
@@ -79,8 +74,8 @@ $train:
       num: 1
       update_interval: 0.5
       devices: [cuda:0]
-    VisualizerNode:
-      num: 1
+    # VisualizerNode:
+    #   num: 1
 
 $test:
   # Testing node configuration
@@ -95,5 +90,5 @@ $test:
       optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
       num: 1
-    VisualizerNode:
-      num: 1
+    # VisualizerNode:
+    #   num: 1
