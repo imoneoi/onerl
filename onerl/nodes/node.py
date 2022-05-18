@@ -1,8 +1,5 @@
-import multiprocessing as mp
 import time
 import os
-
-import torch
 
 from faster_fifo import Queue
 
@@ -12,7 +9,7 @@ import setproctitle
 class Node:
     # Node basics
     def __init__(self, node_class: str, node_ns: str, node_rank: int, node_config: dict,
-                 ns_config: dict, global_objects: dict):
+                 ns_config: dict, peer_objects: dict):
         super().__init__()
         self.node_ns = node_ns
         self.node_class = node_class
@@ -21,9 +18,9 @@ class Node:
         self.config = node_config
 
         self.ns_config = ns_config
-        self.global_objects = global_objects
+        self.peer_objects = peer_objects
 
-        self.objects = self.global_objects[self.node_name]
+        self.objects = self.peer_objects["self"]
         self.queue = self.objects["queue"]
 
         # State & profiling
@@ -33,11 +30,13 @@ class Node:
             self.profile_stream = open(profile_log_filename, "wb",
                                        buffering=self.ns_config.get("profile_log_buffer", 1048576))
 
-        # Metric
-        self.metric_node = self.find("MetricNode", 0)
-
         # Proc title for visualization
         setproctitle.setproctitle("-OneRL- {}".format(self.node_name))
+
+    # torch utilities
+    def setup_torch_opt(self):
+        import torch
+
         # CUDNN Benchmark
         if torch.backends.cudnn.is_available():
             torch.backends.cudnn.benchmark = True
@@ -46,10 +45,6 @@ class Node:
         torch.set_num_threads(1)
 
     # Node methods
-    @staticmethod
-    def get_node_name(node_ns: str, node_class: str, node_rank: int):
-        return "{}@{}.{}".format(node_ns, node_class, node_rank)  # Naming convention
-
     @staticmethod
     def node_preprocess_ns_config(node_class: str, num: int, ns_config: dict):
         ns_config.setdefault("num", {})
@@ -60,42 +55,41 @@ class Node:
         # create queues
         return [{"queue": Queue(max_size_bytes=1048576)} for _ in range(num)]
 
+    @staticmethod
+    def node_import_peer_objects(node_class: str, num: int, ns_config: dict, ns_objects: dict, all_ns_objects: dict):
+        return [{
+            "self": ns_objects[node_class][rank],
+
+            "metric": ns_objects.get("MetricNode")
+        } for rank in range(num)]
+
+    # Node name convention
+    @staticmethod
+    def get_node_name(node_ns: str, node_class: str, node_rank: int):
+        return "{}@{}.{}".format(node_ns, node_class, node_rank)  # Naming convention
+
     # Node utils
     @staticmethod
     def node_count(node_class: str, ns_config: dict):
         return ns_config["num"].get(node_class, 0)
 
-    # State
+    # State / Profiling
     def setstate(self, state: str):
         if self.is_profile:
             self.profile_stream.write(time.time_ns().to_bytes(8, "big") + state.encode() + b"\0")
 
     # Comm
-    def find(self, node_class: str, node_rank: int = 0, target_ns: str = None):
-        # find in local namespace
-        name = self.get_node_name(target_ns if target_ns is not None else self.node_ns, node_class, node_rank)
-        if name in self.global_objects:
-            return name
-        # then global namespace
-        # FIXME: No global namespace in future
-        name = self.get_node_name("$global", node_class, node_rank)
-        if name in self.global_objects:
-            return name
-        return None
+    def has_peer(self, peer: str):
+        return self.peer_objects.get(peer) is not None
 
-    def find_all(self, node_class: str):
-        node_names = []
-        for rank in range(self.node_count(node_class, self.ns_config)):
-            node_names.append(self.get_node_name(self.node_ns, node_class, rank))
-
-        return node_names
-
-    # Queue
-    def send(self, target_name: str, msg: any):
-        self.global_objects[target_name]["queue"].put(msg)
+    def send(self, peer: str, rank: int, msg: any):
+        self.peer_objects[peer][rank]["queue"].put(msg)
 
     def recv(self):
-        return self.queue.get()
+        return self.queue.get(timeout=1000000000)
+
+    def recv_all(self):
+        return self.queue.get_many(timeout=1000000000)
 
     def available(self):
         return not self.queue.empty()
@@ -110,5 +104,5 @@ class Node:
 
     # Metric
     def log_metric(self, metric):
-        if self.metric_node is not None:
-            self.send(self.metric_node, metric)
+        if self.has_peer("metric"):
+            self.send("metric", 0, metric)

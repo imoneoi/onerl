@@ -7,7 +7,7 @@ from torch import nn
 
 from onerl.algorithms import Algorithm
 from onerl.nodes import OptimizerNode, EnvNode
-from onerl.utils.dtype import numpy_to_torch_dtype_dict
+from onerl.utils.torch_dtype import numpy_to_torch_dtype_dict
 
 
 class PolicyInferenceWrapper(nn.Module):

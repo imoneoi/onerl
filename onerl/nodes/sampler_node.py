@@ -30,9 +30,17 @@ class SamplerNode(Node):
 
         return objects
 
+    @staticmethod
+    def node_import_peer_objects(node_class: str, num: int, ns_config: dict, ns_objects: dict, all_ns_objects: dict):
+        objects = Node.node_import_peer_objects(node_class, num, ns_config, ns_objects, all_ns_objects)
+        for obj in objects:
+            obj["replay"] = ns_objects.get("ReplayBufferNode")
+
+        return objects
+
     def run(self):
         # replay buffer shared objs
-        replay_buffer_objs = self.global_objects[self.find("ReplayBufferNode")]
+        replay_buffer_objs = self.peer_objects["replay"][0]
 
         # local idx & size (for lock-free)
         shared_buffer = replay_buffer_objs["buffer"].get()

@@ -1,7 +1,7 @@
 import torch
 
 from onerl.utils.batch.shared import BatchShared
-from onerl.utils.dtype import numpy_to_torch_dtype_dict
+from onerl.utils.torch_dtype import numpy_to_torch_dtype_dict
 
 
 class BatchCuda:
@@ -10,11 +10,8 @@ class BatchCuda:
         self.device = device
 
         # Source
-        if device.type == "cuda":
-            # Pin memory if on CUDA
-            [v.pin_memory_(device) for v in self.batch_shared.data.values()]
-
-        self.src = {k: v.get_torch() for k, v in self.batch_shared.data.items()}
+        pin_memory = device.type == "cuda"
+        self.src = {k: v.get_torch(pin_memory=pin_memory, pin_to=device) for k, v in self.batch_shared.data.items()}
         # CUDA buffer
         self.data = {k: torch.zeros(v.shape, dtype=numpy_to_torch_dtype_dict[v.dtype], device=device)
                      for k, v in self.batch_shared.data.items()}

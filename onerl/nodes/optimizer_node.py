@@ -38,12 +38,22 @@ class OptimizerNode(Node):
         # rank 0 only, policy update
         objects[0].update({
             "update_lock": mp.Lock(),
-            "update_version": mp.Value(ctypes.c_int64, -1, lock=False),
+            "update_version": mp.RawValue(ctypes.c_int64, -1),
             "update_state_dict": SharedStateDict(example_policy_state_dict)
         })
         return objects
 
+    @staticmethod
+    def node_import_peer_objects(node_class: str, num: int, ns_config: dict, ns_objects: dict, all_ns_objects: dict):
+        objects = Node.node_import_peer_objects(node_class, num, ns_config, ns_objects, all_ns_objects)
+        for obj in objects:
+            obj["sampler"] = ns_objects.get("SamplerNode")
+
+        return objects
+
     def run(self):
+        self.setup_torch_opt()  # setup torch optimizations
+
         # allocate device
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
@@ -72,8 +82,7 @@ class OptimizerNode(Node):
         algorithm.train()
 
         # ticks
-        metric_shared = self.global_objects.get(self.find("MetricNode"), {})
-        shared_tick = metric_shared.get("tick", None)
+        shared_tick = self.peer_objects["metric"][0]["tick"]
 
         # updater
         last_update_time = time.time()
@@ -92,10 +101,9 @@ class OptimizerNode(Node):
         os.makedirs(save_model_path, exist_ok=True)
 
         # optimizer
-        node_sampler = self.find("SamplerNode", self.node_rank)
-        batch = BatchCuda(self.global_objects[node_sampler]["batch"], device)
+        batch = BatchCuda(self.peer_objects["sampler"][self.node_rank]["batch"], device)
         # sample first batch
-        self.send(node_sampler, "")
+        self.send("sampler", self.node_rank, "")
 
         while True:
             # wait & copy batch
@@ -104,7 +112,7 @@ class OptimizerNode(Node):
             self.setstate("copy")
             batch.copy_from()
             # notify to sample
-            self.send(node_sampler, "")
+            self.send("sampler", self.node_rank, "")
 
             # optimize
             self.setstate("step")

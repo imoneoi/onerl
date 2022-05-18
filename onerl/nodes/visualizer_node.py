@@ -8,11 +8,19 @@ from onerl.nodes.env_node import EnvNode
 
 
 class VisualizerNode(Node):
+    @staticmethod
+    def node_import_peer_objects(node_class: str, num: int, ns_config: dict, ns_objects: dict, all_ns_objects: dict):
+        objects = Node.node_import_peer_objects(node_class, num, ns_config, ns_objects, all_ns_objects)
+        for obj in objects:
+            obj["env"] = ns_objects.get("EnvNode")
+
+        return objects
+
     def run(self):
         vis_mode = "offline" if "vis_state_shape" in self.ns_config["env"] else "obs"
 
         if vis_mode == "offline":
-            shared_state = [self.global_objects[k]["vis_state"].get() for k in self.find_all("EnvNode")]
+            shared_state = [env_obj["vis_state"].get() for env_obj in self.peer_objects["env"]]
             num_envs = len(shared_state)
 
             # create envs for render
@@ -24,7 +32,7 @@ class VisualizerNode(Node):
             img_dtype = img_sample.dtype
         elif vis_mode == "obs":
             # shared obs
-            shared_obs = [self.global_objects[k]["obs"].get() for k in self.find_all("EnvNode")]
+            shared_obs = [env_obj["obs"].get() for env_obj in self.peer_objects["env"]]
             num_envs = len(shared_obs)
 
             # image shape

@@ -2,11 +2,29 @@ import torch
 
 from onerl.nodes.node import Node
 from onerl.nodes.optimizer_node import OptimizerNode
-from onerl.utils.dtype import numpy_to_torch_dtype_dict
+from onerl.utils.torch_dtype import numpy_to_torch_dtype_dict
 
 
 class PolicyNode(Node):
+    @staticmethod
+    def node_import_peer_objects(node_class: str, num: int, ns_config: dict, ns_objects: dict, all_ns_objects: dict):
+        objects = Node.node_import_peer_objects(node_class, num, ns_config, ns_objects, all_ns_objects)
+
+        optimizer_ns = ns_config["nodes"][node_class].get("optimizer_namespace")
+        for obj in objects:
+            obj["env"] = ns_objects.get("EnvNode")
+            obj["scheduler"] = ns_objects.get("SchedulerNode")
+
+            if optimizer_ns is not None:
+                obj["optimizer"] = all_ns_objects.get(optimizer_ns, {}).get("OptimizerNode")
+            else:
+                obj["optimizer"] = ns_objects.get("OptimizerNode")
+
+        return objects
+
     def run(self):
+        self.setup_torch_opt()  # setup torch optimizations
+
         # allocate device
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
@@ -34,27 +52,22 @@ class PolicyNode(Node):
         else:
             batch = torch.zeros_like(batch_cpu, device=device)
         # shared objs
-        node_env_list = self.find_all("EnvNode")
-        obs_shared = {k: self.global_objects[k]["obs"].get_torch() for k in node_env_list}
-        act_shared = {k: self.global_objects[k]["act"].get_torch() for k in node_env_list}
-        # nodes
-        node_optimizer = self.find("OptimizerNode", 0, self.config.get("optimizer_namespace", None))
-        node_scheduler = self.find("SchedulerNode")
-        node_metric = self.find("MetricNode")
+        obs_shared = [env_obj["obs"].get_torch() for env_obj in self.peer_objects["env"]]
+        act_shared = [env_obj["act"].get_torch() for env_obj in self.peer_objects["env"]]
 
-        optimizer_shared = self.global_objects.get(node_optimizer, None)
-        metric_shared = self.global_objects.get(node_metric, None)
+        optimizer_shared = self.peer_objects["optimizer"][0] if self.has_peer("optimizer") else None
+        metric_shared = self.peer_objects["metric"][0] if self.has_peer("metric") else None
 
         # ticking
         do_tick = self.config.get("do_tick", True)
-        if (not do_tick) or (node_metric is None):
+        if (not do_tick) or (metric_shared is None):
             self.log("Global step ticking disabled.")
 
         # policy update
         local_policy_state_dict = policy.policy_state_dict()
         shared_policy_state_dict = None
 
-        if node_optimizer is not None:
+        if optimizer_shared is not None:
             shared_policy_state_dict = optimizer_shared["update_state_dict"]
             shared_policy_state_dict.initialize("subscriber", device)
         else:
@@ -63,7 +76,7 @@ class PolicyNode(Node):
         # event loop
         while True:
             # fetch new version (lock free)
-            if node_optimizer is not None:
+            if optimizer_shared is not None:
                 self.setstate("update_policy")
                 optimizer_shared["update_lock"].acquire()
                 new_version = optimizer_shared["update_version"].value
@@ -74,25 +87,22 @@ class PolicyNode(Node):
                     shared_policy_state_dict.receive(local_policy_state_dict)
                     policy_version = new_version
 
-            # recv request
+            # request for batch
             self.setstate("wait")
-
-            env_queue = []
-            self.send(node_scheduler, self.node_name)  # clear scheduler queue
-            while len(env_queue) < batch_size:
-                env_queue.append(self.recv())
+            self.send("scheduler", 0, ("policy", self.node_rank))
+            env_queue = self.recv()
 
             # copy tensor & infer
             self.setstate("copy_obs")
-            for idx, env_name in enumerate(env_queue):
-                batch_cpu[idx] = obs_shared[env_name]
+            for idx, env_id in enumerate(env_queue):
+                batch_cpu[idx] = obs_shared[env_id]
             if not is_cpu:
                 batch.copy_(batch_cpu, non_blocking=True)
 
             # get ticks
             self.setstate("step")
             ticks = None
-            if do_tick and (node_metric is not None):
+            if do_tick:
                 metric_shared["lock"].acquire()
                 ticks = metric_shared["tick"].value  # read
                 metric_shared["tick"].value = ticks + batch_size  # update
@@ -105,6 +115,6 @@ class PolicyNode(Node):
             self.setstate("copy_act")
             if not is_cpu:
                 act = act.cpu()
-            for idx, env_name in enumerate(env_queue):
-                act_shared[env_name].copy_(act[idx])
-                self.send(env_name, "")
+            for idx, env_id in enumerate(env_queue):
+                act_shared[env_id].copy_(act[idx])
+                self.send("env", env_id, "")

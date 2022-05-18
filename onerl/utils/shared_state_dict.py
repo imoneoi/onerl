@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import torch
 
-from onerl.utils.dtype import torch_to_numpy_dtype_dict
+from onerl.utils.torch_dtype import torch_to_numpy_dtype_dict
 from onerl.utils.shared_array import SharedArray
 
 
@@ -20,16 +20,14 @@ class SharedStateDict:
     def initialize(self, type: str, device: torch.device):
         self.type = type
         self.device = device
-        self.shared_cpu_tensor = OrderedDict((k, v.get_torch()) for k, v in self.shared_cpu.items())
 
-        if device.type == "cuda":
-            if type == "publisher":
-                # Pin memory
-                [v.pin_memory_(device) for v in self.shared_cpu.values()]
-            elif type == "subscriber":
-                # Create pinned memory buffer
-                with torch.cuda.device(device):
-                    self.local_cpu_buffer = OrderedDict((k, torch.zeros_like(v, pin_memory=True)) for k, v in self.shared_cpu_tensor.items())
+        pin_memory = (type == "publisher") and (device.type == "cuda")  # pin memory for publisher
+        self.shared_cpu_tensor = OrderedDict((k, v.get_torch(pin_memory=pin_memory, pin_to=device)) for k, v in self.shared_cpu.items())
+
+        if (type == "subscriber") and (device.type == "cuda"):
+            # Create pinned memory buffer
+            with torch.cuda.device(device):
+                self.local_cpu_buffer = OrderedDict((k, torch.zeros_like(v, pin_memory=True)) for k, v in self.shared_cpu_tensor.items())
 
     def copy_state_dict(self, src, dst):
         with torch.no_grad():

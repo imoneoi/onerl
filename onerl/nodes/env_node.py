@@ -7,6 +7,7 @@ from onerl.utils.batch.shared import BatchShared
 
 
 class EnvNode(Node):
+    # node methods
     @staticmethod
     def node_preprocess_ns_config(node_class: str, num: int, ns_config: dict):
         Node.node_preprocess_ns_config(node_class, num, ns_config)
@@ -63,6 +64,17 @@ class EnvNode(Node):
         return objects
 
     @staticmethod
+    def node_import_peer_objects(node_class: str, num: int, ns_config: dict, ns_objects: dict, all_ns_objects: dict):
+        objects = Node.node_import_peer_objects(node_class, num, ns_config, ns_objects, all_ns_objects)
+        
+        for obj in objects:
+            obj["scheduler"] = ns_objects.get("SchedulerNode")
+            obj["replay"] = ns_objects.get("ReplayBufferNode")
+
+        return objects
+
+    # create env
+    @staticmethod
     def create_env(ns_config: dict):
         env_config = ns_config["env"]
         env_class = get_class_from_str(env_config.get("import", ""), env_config["name"])
@@ -77,10 +89,9 @@ class EnvNode(Node):
 
         shared_vis_state = self.objects["vis_state"].get() if "vis_state" in self.objects else None
 
-        # find nodes
-        node_scheduler = self.find("SchedulerNode")
-        node_replay_buffer = self.find("ReplayBufferNode")
-        if node_replay_buffer is None:
+        # has replay?
+        has_replay = self.has_peer("replay")
+        if not has_replay:
             self.log("ReplayBufferNode not found, skip storing experience.")
 
         # create and reset env
@@ -95,7 +106,7 @@ class EnvNode(Node):
 
             # request act
             self.setstate("wait_act")
-            self.send(node_scheduler, self.node_name)
+            self.send("scheduler", 0, ("env", self.node_rank))
             self.recv()
 
             # step env
@@ -105,7 +116,7 @@ class EnvNode(Node):
             log_done = done and (not info.get("TimeLimit.truncated", False))
             tot_reward += rew
             # log
-            if node_replay_buffer is not None:
+            if has_replay:
                 self.setstate("wait_log")
                 self.objects["log"].wait_ready()
 
@@ -114,7 +125,7 @@ class EnvNode(Node):
                 np.copyto(shared_log.act, shared_act)
                 np.copyto(shared_log.rew, rew)
                 np.copyto(shared_log.done, log_done)
-                self.send(node_replay_buffer, self.node_name)
+                self.send("replay", 0, self.node_rank)
 
             # update obs & reset
             obs = obs_next

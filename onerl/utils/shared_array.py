@@ -1,7 +1,7 @@
-import torch
-import numpy as np
+import multiprocessing as mp
+import ctypes
 
-from onerl.utils.dtype import numpy_to_torch_dtype_dict
+import numpy as np
 
 
 class SharedArray:
@@ -9,22 +9,28 @@ class SharedArray:
         self.shape = shape
         self.dtype = dtype
 
-        self.tensor = torch.zeros(shape, dtype=numpy_to_torch_dtype_dict[dtype])
-        self.tensor.share_memory_()
-        assert self.tensor.is_shared()
-
-    def pin_memory_(self, device):
-        with torch.cuda.device(device):
-            result = torch.cuda.cudart().cudaHostRegister(self.tensor.data_ptr(), self.tensor.numel() * self.tensor.element_size(), 0)
-            assert result.value == 0, "Failed to pin memory."
-
-        assert self.tensor.is_pinned()
+        self.arr = mp.RawArray(ctypes.c_uint8, int(np.prod(shape) * np.dtype(dtype).itemsize))
 
     def get(self):
-        return self.tensor.numpy()
+        return np.frombuffer(self.arr, dtype=self.dtype).reshape(self.shape)
 
-    def get_torch(self):
-        return self.tensor
+    def get_torch(self, pin_memory=False, pin_to=None):
+        import torch
+
+        # The torch Tensor and numpy array will share their underlying memory locations,
+        # and changing one will change the other.
+        # https://pytorch.org/tutorials/beginner/former_torchies/tensor_tutorial.html
+        tensor = torch.from_numpy(self.get())
+
+        # pin memory
+        if pin_memory:
+            with torch.cuda.device(pin_to):
+                result = torch.cuda.cudart().cudaHostRegister(tensor.data_ptr(), tensor.numel() * tensor.element_size(), 0)
+                assert result.value == 0, "Failed to pin memory."
+
+            assert tensor.is_pinned()
+
+        return tensor
 
     def __repr__(self):
         return "<SharedArray shape={}, dtype={}>".format(self.shape, self.dtype)
