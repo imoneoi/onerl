@@ -97,6 +97,9 @@ class Node:
     def recv(self):
         return self.queue.get()
 
+    def recv_all(self):
+        return self.queue.get_many()
+
     def available(self):
         return not self.queue.empty()
 

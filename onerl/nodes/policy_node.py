@@ -38,12 +38,12 @@ class PolicyNode(Node):
         obs_shared = {k: self.global_objects[k]["obs"].get_torch() for k in node_env_list}
         act_shared = {k: self.global_objects[k]["act"].get_torch() for k in node_env_list}
         # nodes
-        node_optimizer = self.find("OptimizerNode", 0, self.config.get("optimizer_namespace", None))
+        node_optimizer = self.find("OptimizerNode", 0, self.config.get("optimizer_namespace"))
         node_scheduler = self.find("SchedulerNode")
         node_metric = self.find("MetricNode")
 
-        optimizer_shared = self.global_objects.get(node_optimizer, None)
-        metric_shared = self.global_objects.get(node_metric, None)
+        optimizer_shared = self.global_objects.get(node_optimizer)
+        metric_shared = self.global_objects.get(node_metric)
 
         # ticking
         do_tick = self.config.get("do_tick", True)
@@ -77,10 +77,8 @@ class PolicyNode(Node):
             # recv request
             self.setstate("wait")
 
-            env_queue = []
             self.send(node_scheduler, self.node_name)  # clear scheduler queue
-            while len(env_queue) < batch_size:
-                env_queue.append(self.recv())
+            env_queue = self.recv()
 
             # copy tensor & infer
             self.setstate("copy_obs")
@@ -92,7 +90,7 @@ class PolicyNode(Node):
             # get ticks
             self.setstate("step")
             ticks = None
-            if do_tick and (node_metric is not None):
+            if do_tick:
                 metric_shared["lock"].acquire()
                 ticks = metric_shared["tick"].value  # read
                 metric_shared["tick"].value = ticks + batch_size  # update
@@ -106,5 +104,5 @@ class PolicyNode(Node):
             if not is_cpu:
                 act = act.cpu()
             for idx, env_name in enumerate(env_queue):
-                act_shared[env_name].copy_(act[idx])
+                act_shared[env_name][...] = act[idx]
                 self.send(env_name, "")
