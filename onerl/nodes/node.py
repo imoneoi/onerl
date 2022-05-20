@@ -31,7 +31,7 @@ class Node:
         if self.is_profile:
             profile_log_filename = os.path.join(self.ns_config["profile_log_path"], self.node_name)
             self.profile_stream = open(profile_log_filename, "wb",
-                                       buffering=self.ns_config.get("profile_log_buffer", 1048576))
+                                       buffering=self.ns_config.get("profile_log_buffer", 100 * 1024))
 
         # Metric
         self.metric_node = self.find("MetricNode", 0)
