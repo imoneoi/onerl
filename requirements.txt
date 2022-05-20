@@ -1,0 +1,16 @@
+torch
+faster_fifo
+pyyaml
+setproctitle
+gym
+
+mujoco_py
+patchelf
+gym[atari]
+gym[accept-rom-license]
+
+opencv-python
+
+wandb
+tensorboard
+tensorboardX
