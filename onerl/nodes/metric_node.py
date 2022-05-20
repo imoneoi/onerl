@@ -16,7 +16,7 @@ class MetricNode(Node):
         assert num == 1, "MetricNode: There must be only one metric node."
         objects[0].update({
             "lock": mp.Lock(),
-            "tick": mp.Value(ctypes.c_int64, 0, lock=False)
+            "tick": mp.RawValue(ctypes.c_int64, 0)
         })
         return objects
 

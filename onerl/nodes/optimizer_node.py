@@ -38,7 +38,7 @@ class OptimizerNode(Node):
         # rank 0 only, policy update
         objects[0].update({
             "update_lock": mp.Lock(),
-            "update_version": mp.Value(ctypes.c_int64, -1, lock=False),
+            "update_version": mp.RawValue(ctypes.c_int64, -1),
             "update_state_dict": SharedStateDict(example_policy_state_dict)
         })
         return objects
