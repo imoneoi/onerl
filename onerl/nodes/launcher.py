@@ -130,7 +130,7 @@ def launch_nodes(yaml_config: dict):
                 process.start()
                 proc_args[0] = process
 
-        time.sleep(0.1)
+        time.sleep(1)
 
 
 def main():
