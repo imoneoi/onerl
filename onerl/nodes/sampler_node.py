@@ -19,7 +19,7 @@ class SamplerNode(Node):
                "Batch size must be divisible by number of samplers."
 
         batch_size = tot_batch_size // num_samplers
-        frame_stack = ns_config["env"].get("sample_frame_stack", None)
+        frame_stack = ns_config["env"].get("sample_frame_stack")
         if frame_stack is None:
             frame_stack = ns_config["env"]["frame_stack"] + 1
         for obj in objects:
@@ -61,7 +61,7 @@ class SamplerNode(Node):
         while True:
             # atomic copy idx
             shared_lock.acquire()
-            local_size[:] = shared_size
+            local_size[...] = shared_size
             shared_lock.release()
             if np.min(local_size) > protect_range:
                 break
@@ -76,8 +76,8 @@ class SamplerNode(Node):
             # copy batch (lock-free)
             # atomic copy idx
             shared_lock.acquire()
-            local_size[:] = shared_size
-            local_idx[:] = shared_idx
+            local_size[...] = shared_size
+            local_idx[...] = shared_idx
             shared_lock.release()
 
             # sample (idx + protect range ... end)
@@ -100,7 +100,7 @@ class SamplerNode(Node):
             # copy
             self.setstate("copy")
             for k in batch_keys:
-                shared_batch.__dict__[k][:] = shared_buffer.__dict__[k][buf_idx, sample_idx] \
+                shared_batch.__dict__[k][...] = shared_buffer.__dict__[k][buf_idx, sample_idx] \
                     .reshape(batch_size, frame_stack, *shared_buffer.__dict__[k].shape[2:])
             # notify
             self.objects["batch"].set_ready()

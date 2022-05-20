@@ -110,10 +110,10 @@ class EnvNode(Node):
                 self.objects["log"].wait_ready()
 
                 self.setstate("copy_log")
-                np.copyto(shared_log.obs, obs)
-                np.copyto(shared_log.act, shared_act)
-                np.copyto(shared_log.rew, rew)
-                np.copyto(shared_log.done, log_done)
+                shared_log.obs[...] = obs
+                shared_log.act[...] = shared_act
+                shared_log.rew[...] = rew
+                shared_log.done[...] = log_done
                 self.send(node_replay_buffer, self.node_name)
 
             # update obs & reset
@@ -127,4 +127,4 @@ class EnvNode(Node):
 
             # offline visualization
             if shared_vis_state is not None:
-                shared_vis_state[:] = env.save_state()
+                shared_vis_state[...] = env.save_state()
