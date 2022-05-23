@@ -120,4 +120,21 @@ python -m onerl.scripts.convert_profile profile_log/
 
 Open https://ui.perfetto.dev in browser and drag & drop the converted JSON profile `profile.json`
 
+![](./docs/assets/perf.png)
+
+## Distributed principles
+
+### Pipeline execution with event-driven scheduling
+
+![](./docs/assets/pipeline.png)
+
+In action:
+
+![](./docs/assets/pipeline_perf.png)
+
+### Lock-free replay sampling
+
+
+![](./docs/assets/lockfree-buffer.drawio.png)
+
 ## Acknowledegments
