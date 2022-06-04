@@ -78,6 +78,7 @@ class SACAlgorithm(Algorithm):
     def forward(self,
                 obs: torch.Tensor,
                 ticks: int,
+                rstate: Optional[torch.Tensor] = None,
                 feature: Optional[torch.Tensor] = None,
                 return_log_prob: bool = False) -> torch.Tensor:
         # pure random start

@@ -1,3 +1,4 @@
+from typing import Optional
 from collections import OrderedDict
 
 import torch
@@ -13,7 +14,10 @@ class RandomAlgorithm(Algorithm):
                  **kwargs):
         super().__init__(network, env_params)
 
-    def forward(self, obs: torch.Tensor, ticks: int) -> torch.Tensor:
+    def recurrent_state(self):
+        return None
+
+    def forward(self, obs: torch.Tensor, ticks: int, rstate: Optional[torch.Tensor] = None) -> torch.Tensor:
         if "act_n" in self.env_params:
             # discrete action space
             return torch.randint(0, self.env_params["act_n"], (obs.shape[0], ))

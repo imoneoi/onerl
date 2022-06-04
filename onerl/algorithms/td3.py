@@ -65,6 +65,7 @@ class TD3Algorithm(Algorithm):
     def forward(self,
                 obs: torch.Tensor,
                 ticks: int,
+                rstate: Optional[torch.Tensor] = None,
                 feature: Optional[torch.Tensor] = None) -> torch.Tensor:
         # pure random start
         if (ticks is not None) and (ticks < self.start_steps):

@@ -1,3 +1,4 @@
+from typing import Optional
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -49,7 +50,11 @@ class DDQNAlgorithm(Algorithm):
         self.network.train(mode)
         return self
 
-    def forward(self, obs: torch.Tensor, ticks: int) -> torch.Tensor:
+    def recurrent_state(self):
+        # Recurrent policy not supported
+        return None
+
+    def forward(self, obs: torch.Tensor, ticks: int, rstate: Optional[torch.Tensor] = None) -> torch.Tensor:
         with torch.no_grad():
             q = self.network["critic"](self.network["feature_extractor"](obs))
 

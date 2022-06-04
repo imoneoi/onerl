@@ -2,6 +2,8 @@ import numpy as np
 
 from onerl.utils.import_module import get_class_from_str
 from onerl.nodes.node import Node
+from onerl.nodes.optimizer_node import OptimizerNode
+
 from onerl.utils.shared_array import SharedArray
 from onerl.utils.batch.shared import BatchShared
 
@@ -11,25 +13,25 @@ class EnvNode(Node):
     def node_preprocess_ns_config(node_class: str, num: int, ns_config: dict):
         Node.node_preprocess_ns_config(node_class, num, ns_config)
 
-        # create sample env
-        sample_env = EnvNode.create_env(ns_config)
+        # create example env
+        example_env = EnvNode.create_env(ns_config)
         # obs
-        ns_config["env"]["obs_shape"] = sample_env.observation_space.shape
-        ns_config["env"]["obs_dtype"] = sample_env.observation_space.dtype
+        ns_config["env"]["obs_shape"] = example_env.observation_space.shape
+        ns_config["env"]["obs_dtype"] = example_env.observation_space.dtype
         # act
-        if hasattr(sample_env.action_space, "n"):
+        if hasattr(example_env.action_space, "n"):
             # discrete
             ns_config["env"]["act_shape"] = ()
             ns_config["env"]["act_dtype"] = np.int64
-            ns_config["env"]["act_n"] = sample_env.action_space.n
+            ns_config["env"]["act_n"] = example_env.action_space.n
         else:
             # continuous
-            ns_config["env"]["act_shape"] = sample_env.action_space.shape
-            ns_config["env"]["act_dtype"] = sample_env.action_space.dtype
-            ns_config["env"]["act_max"] = sample_env.action_space.high
-            assert np.isclose(sample_env.action_space.low, -sample_env.action_space.high).all(), \
+            ns_config["env"]["act_shape"] = example_env.action_space.shape
+            ns_config["env"]["act_dtype"] = example_env.action_space.dtype
+            ns_config["env"]["act_max"] = example_env.action_space.high
+            assert np.isclose(example_env.action_space.low, -example_env.action_space.high).all(), \
                 "Action range must be symmetric"
-
+        
         # batch
         ns_config["env"]["batch"] = {
             "obs": (ns_config["env"]["obs_shape"], ns_config["env"]["obs_dtype"]),
@@ -38,9 +40,16 @@ class EnvNode(Node):
             "done": ((), np.float32)
         }
 
+        # create example state
+        example_rstate_info = OptimizerNode.create_algo(ns_config).recurrent_state()
+        if example_rstate_info is not None:
+            ns_config["env"]["rstate_shape"], ns_config["env"]["rstate_dtype"] = example_rstate_info
+
+            ns_config["env"]["batch"]["rstate"] = example_rstate_info
+
         # offline visualization
-        if hasattr(sample_env, "load_state") and hasattr(sample_env, "save_state"):
-            sample_vis_state = sample_env.save_state()
+        if hasattr(example_env, "load_state") and hasattr(example_env, "save_state"):
+            sample_vis_state = example_env.save_state()
             ns_config["env"]["vis_state_shape"] = sample_vis_state.shape
             ns_config["env"]["vis_state_dtype"] = sample_vis_state.dtype
 
@@ -52,6 +61,10 @@ class EnvNode(Node):
             obj["obs"] = SharedArray((ns_config["env"]["frame_stack"], *ns_config["env"]["obs_shape"]),
                                      ns_config["env"]["obs_dtype"])
             obj["act"] = SharedArray(ns_config["env"]["act_shape"], ns_config["env"]["act_dtype"])
+
+            # recurrent state
+            if "rstate_shape" in ns_config["env"]:
+                obj["rstate"] = SharedArray(ns_config["env"]["rstate_shape"], ns_config["env"]["rstate_dtype"])
 
             # log to replay
             obj["log"] = BatchShared(ns_config["env"]["batch"], init_ready=True)
@@ -73,6 +86,8 @@ class EnvNode(Node):
         # acquire shared objects
         shared_obs = self.objects["obs"].get()
         shared_act = self.objects["act"].get()
+        shared_rstate = self.objects["rstate"].get() if "rstate" in self.objects else None
+
         shared_log = self.objects["log"].get()
 
         shared_vis_state = self.objects["vis_state"].get() if "vis_state" in self.objects else None
@@ -114,6 +129,9 @@ class EnvNode(Node):
                 shared_log.act[...] = shared_act
                 shared_log.rew[...] = rew
                 shared_log.done[...] = log_done
+                if shared_rstate is not None:
+                    shared_log.rstate[...] = shared_rstate
+
                 self.send(node_replay_buffer, self.node_name)
 
             # update obs & reset

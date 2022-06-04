@@ -10,33 +10,54 @@ class PolicyNode(Node):
         # allocate device
         devices = self.config["devices"]
         device = torch.device(devices[self.node_rank % len(devices)])
-        # load policy
+
+        # create policy
         policy = OptimizerNode.create_algo(self.ns_config).to(device)
         policy.eval()
+
+        policy_version = -1
+
+        # load policy
         if "load_policy" in self.config:
             policy_state_dict = torch.load(self.config["load_policy"], map_location=device)
             policy_state_dict = {k.replace("module.", ""): v
                                  for k, v in policy_state_dict.items()}
             policy.load_state_dict(policy_state_dict, strict=False)
 
-        policy_version = -1
-        # batch
+        # recurrent state
+        is_recurrent = policy.recurrent_state() is not None
+
+        # batch (cpu)
         batch_size = self.config["batch_size"]
 
         is_cpu = device.type == "cpu"
-        batch_cpu = torch.zeros((batch_size, self.ns_config["env"]["frame_stack"],
-                                 *self.ns_config["env"]["obs_shape"]),
-                                dtype=numpy_to_torch_dtype_dict[self.ns_config["env"]["obs_dtype"]],
-                                pin_memory=not is_cpu)
-        # batch (cpu-only mode)
+        obs_batch_cpu = torch.zeros((batch_size, self.ns_config["env"]["frame_stack"], *self.ns_config["env"]["obs_shape"]),
+                                    dtype=numpy_to_torch_dtype_dict[self.ns_config["env"]["obs_dtype"]],
+                                    pin_memory=not is_cpu)
+        act_batch_cpu = torch.zeros((batch_size, *self.ns_config["env"]["act_shape"]),
+                                    dtype=numpy_to_torch_dtype_dict[self.ns_config["env"]["act_dtype"]],
+                                    pin_memory=not is_cpu)
+        rstate_batch_cpu = None
+        if is_recurrent:
+            rstate_batch_cpu = torch.zeros((batch_size, *self.ns_config["env"]["rstate_shape"]),
+                                           dtype=numpy_to_torch_dtype_dict[self.ns_config["env"]["rstate_dtype"]],
+                                           pin_memory=not is_cpu)
+
+        # batch (gpu)
         if is_cpu:
-            batch = batch_cpu
+            obs_batch = obs_batch_cpu
+            rstate_batch = rstate_batch_cpu
         else:
-            batch = torch.zeros_like(batch_cpu, device=device)
+            obs_batch = torch.zeros_like(obs_batch_cpu, device=device)
+            rstate_batch = torch.zeros_like(rstate_batch_cpu, device=device) if is_recurrent else None
+
         # shared objs
         node_env_list = self.find_all("EnvNode")
         obs_shared = {k: self.global_objects[k]["obs"].get_torch() for k in node_env_list}
         act_shared = {k: self.global_objects[k]["act"].get_torch() for k in node_env_list}
+        if is_recurrent:
+            rstate_shared = {k: self.global_objects[k]["rstate"].get_torch() for k in node_env_list}
+
         # nodes
         node_optimizer = self.find("OptimizerNode", 0, self.config.get("optimizer_namespace"))
         node_scheduler = self.find("SchedulerNode")
@@ -80,12 +101,18 @@ class PolicyNode(Node):
             self.send(node_scheduler, self.node_name)  # clear scheduler queue
             env_queue = self.recv()
 
-            # copy tensor & infer
-            self.setstate("copy_obs")
+            # copy tensor
+            self.setstate("copy_obs_rs")
             for idx, env_name in enumerate(env_queue):
-                batch_cpu[idx] = obs_shared[env_name]
+                obs_batch_cpu[idx] = obs_shared[env_name]
+            if is_recurrent:
+                for idx, env_name in enumerate(env_queue):
+                    rstate_batch_cpu[idx] = rstate_shared[env_name]
+            # (if not cpu) to cuda
             if not is_cpu:
-                batch.copy_(batch_cpu, non_blocking=True)
+                obs_batch.copy_(obs_batch_cpu, non_blocking=True)
+                if is_recurrent:
+                    rstate_batch.copy_(rstate_batch_cpu, non_blocking=True)
 
             # get ticks
             self.setstate("step")
@@ -95,14 +122,34 @@ class PolicyNode(Node):
                 ticks = metric_shared["tick"].value  # read
                 metric_shared["tick"].value = ticks + batch_size  # update
                 metric_shared["lock"].release()
+
             # step
             with torch.no_grad():
-                act = policy(batch, ticks)
+                ret = policy(obs=obs_batch, ticks=ticks, rstate=rstate_batch)
+                if is_recurrent:
+                    ret_act, ret_rstate = ret
+                else:
+                    ret_act = ret
 
             # copy back
-            self.setstate("copy_act")
+            self.setstate("copy_act_rs")
+            # cuda --> pinned mem
             if not is_cpu:
-                act = act.cpu()
+                act_batch_cpu.copy_(ret_act, non_blocking=True)
+                if is_recurrent:
+                    rstate_batch_cpu.copy_(ret_rstate, non_blocking=True)
+                torch.cuda.synchronize(device)
+
+                ret_act = act_batch_cpu
+                ret_rstate = rstate_batch_cpu
+
+            # to env
             for idx, env_name in enumerate(env_queue):
-                act_shared[env_name][...] = act[idx]
+                act_shared[env_name][...] = ret_act[idx]
+            if is_recurrent:
+                for idx, env_name in enumerate(env_queue):
+                    rstate_shared[env_name][...] = ret_rstate[idx]
+                    
+            # notify
+            for env_name in env_queue:
                 self.send(env_name, "")

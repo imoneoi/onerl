@@ -1,4 +1,7 @@
+from typing import Optional
+
 import torch
+import numpy as np
 
 from onerl.tests.test_assert import test_assert
 
@@ -16,14 +19,26 @@ class CounterAlgorithm(Algorithm):
         self.ticks = torch.nn.Parameter(torch.zeros((), dtype=torch.int64), requires_grad=False)
         self.env_ticks_last_ = 0
 
-    def forward(self, obs: torch.Tensor, ticks: int):
+    def recurrent_state(self):
+        return (), np.int64
+
+    def forward(self, obs: torch.Tensor, ticks: int, rstate: Optional[torch.Tensor] = None):
         # Assertion 1: N_BS * N_FS * 2
         test_assert((len(obs.shape) == 3) and (obs.shape[-1] == 2), "Bad observation shape in forward(), expected N_BS * N_FS * 2")
         # Assertion 2: Good frame stacking
         test_assert((((obs[:, -1, 0].view(-1, 1) - torch.arange(obs.shape[1] - 1, -1, -1, device=obs.device).view(1, -1)) == obs[:, :, 0]) | (obs[:, :, 0] == 0)).all(), \
                "Bad frame stacking in forward()")
+        
+        # Assertion 3: Good rstate recording
+        test_assert(((obs[:, -1, 0] == rstate + 1) | (obs[:, -1, 0] == 0)).all(), \
+               "Bad rstate recording in forward()")
+        
+        # new act = policy ticks * 10 + env tick % 10
+        new_act = torch.tile(self.ticks * 10, [obs.shape[0]]) + (obs[:, -1, 0] % 10)
+        # new rstate = env ticks
+        new_rstate = obs[:, -1, 0]
 
-        return torch.tile(self.ticks * 10, [obs.shape[0]]) + (obs[:, -1, 0] % 10)
+        return new_act, new_rstate
 
     def learn(self, batch: BatchCuda, ticks: int):
         # Assertion 1: Correct env ticks
@@ -52,6 +67,10 @@ class CounterAlgorithm(Algorithm):
         # Assertion 5: good done recording
         test_assert(((batch.data["done"][:, :-1] == 1) == (batch.data["obs"][:, 1:, 1] == -1)).all(), \
                "Done flag not correct in learn()")
+        
+        # Assertion 6: good rstate recording
+        test_assert(((obs[:, 0, 0] == batch.data["rstate"] + 1) | (obs[:, -1, 0] == 0)).all(), \
+                "Bad rstate recording in learn()")
 
         return {}
 
