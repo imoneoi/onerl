@@ -1,0 +1,66 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Mujoco TD3 Test",
+            "type": "python",
+            "request": "launch",
+            "module": "onerl.nodes.launcher",
+            "args": [
+                "examples/config/1_gpu/mujoco_td3.yaml"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "DDRQN Test",
+            "type": "python",
+            "request": "launch",
+            "module": "onerl.nodes.launcher",
+            "args": [
+                "examples/config/2_gpu/atari_ddrqn.yaml"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "[unittest] Counter pCPU,optCPU",
+            "type": "python",
+            "request": "launch",
+            "module": "onerl.nodes.launcher",
+            "args": [
+                "onerl/tests/counter/test_counter_policy_cpu_opt_cpu.yaml"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "[unittest] Counter pCPU,optCUDA",
+            "type": "python",
+            "request": "launch",
+            "module": "onerl.nodes.launcher",
+            "args": [
+                "onerl/tests/counter/test_counter_policy_cpu_opt_cuda.yaml"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "[unittest] Counter pCUDA,optCUDA",
+            "type": "python",
+            "request": "launch",
+            "module": "onerl.nodes.launcher",
+            "args": [
+                "onerl/tests/counter/test_counter_policy_cuda_opt_cuda.yaml"
+            ],
+            "justMyCode": true
+        },
+    ]
+}

@@ -1,11 +1,14 @@
 from onerl.networks.resnet import ResnetEncoder
-from onerl.networks.simple_cnn import SimpleCNNEncoder
+
+from onerl.networks.gru import GRURecurrent
 
 from onerl.networks.mlp import MLP
 
 
 __all__ = [
-    "ResnetEncoder", "SimpleCNNEncoder",
+    "ResnetEncoder",
+    
+    "GRURecurrent",
 
     "MLP"
 ]

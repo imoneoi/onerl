@@ -8,40 +8,55 @@ $global:
     import: examples.envs.atari_env
     name: create_atari_env
     params:
-      name: Breakout
-    frame_stack: 4
+      name: MsPacman
+    frame_stack: 1
+    sample_frame_stack: 40  # BPTT timesteps
 
   # Algorithm
   algorithm:
     import: onerl.algorithms
-    name: DDQNAlgorithm
+    name: DDRQNAlgorithm
     network:  # Network architecture
       feature_extractor:
         import: onerl.networks
         name: ResnetEncoder
         params:
-          in_channels: 4
+          frame_stack: False
+
+          in_channels: 1
+          
+      recurrent:
+        import: onerl.networks
+        name: GRURecurrent
+        params:
+          input_dims: 64
+          hidden_dims: 256
+
       critic:
         import: onerl.networks
         name: MLP
         params:
+          frame_stack: False
+
           norm_type: none
-          input_dims: 64
+          input_dims: 256
           num_hidden: [256]
-          output_dims: 4
+          output_dims: 9
 
     params:  # Algorithm hyper-parameters
+      warmup_timesteps: 20  # Usually half of total BPTT timesteps
+
       replay_buffer_size: 1000000
 
       lr: 0.0003
       batch_size: 256
-      gamma: 0.99
+      gamma: 0.997
 
-      target_update_freq: 50
+      target_update_freq: 20
 
       eps_start: 1.0
-      eps_final: 0.05
-      eps_final_steps: 1000000
+      eps_final: 0.1
+      eps_final_steps: 10000000
 
   nodes:  # Metric recording node here
     MetricNode:
@@ -51,21 +66,21 @@ $train:
   # Training node configuration
   nodes:
     EnvNode:
-      num: 32
+      num: 64
     PolicyNode:
-      num: 16
-      batch_size: 1
-      devices: [cpu]
+      num: 1
+      batch_size: 32
+      devices: [cuda:0]
     SchedulerNode:
       num: 1
     ReplayBufferNode:
       num: 1
     SamplerNode:
-      num: 2
+      num: 1
     OptimizerNode:
-      num: 2
+      num: 1
       update_interval: 3.0
-      devices: [cuda:1, cuda:0]
+      devices: [cuda:1]
 
 $test:
   # Testing special configuration (override)
@@ -90,5 +105,5 @@ $test:
       optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
       num: 1
-    VisualizerNode:
-      num: 1
+    # VisualizerNode:
+    #   num: 1

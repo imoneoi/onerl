@@ -29,3 +29,6 @@ class BatchCuda:
 
     def wait_ready(self):
         self.batch_shared.wait_ready()
+
+    def __getattr__(self, name):
+        return self.data[name]

@@ -95,10 +95,10 @@ class Node:
         self.global_objects[target_name]["queue"].put(msg)
 
     def recv(self):
-        return self.queue.get()
+        return self.queue.get(timeout=1000)
 
     def recv_all(self):
-        return self.queue.get_many()
+        return self.queue.get_many(timeout=1000)
 
     def available(self):
         return not self.queue.empty()

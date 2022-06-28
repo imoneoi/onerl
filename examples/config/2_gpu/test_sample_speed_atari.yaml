@@ -8,7 +8,7 @@ $global:
     import: examples.envs.atari_env
     name: create_atari_env
     params:
-      name: Breakout
+      name: Asterix
     frame_stack: 4
 
   # Algorithm
@@ -28,7 +28,7 @@ $global:
           norm_type: none
           input_dims: 64
           num_hidden: [256]
-          output_dims: 4
+          output_dims: 9
 
     params:  # Algorithm hyper-parameters
       replay_buffer_size: 1000000
@@ -51,21 +51,21 @@ $train:
   # Training node configuration
   nodes:
     EnvNode:
-      num: 32
+      num: 384
     PolicyNode:
-      num: 16
-      batch_size: 1
-      devices: [cpu]
+      num: 1
+      batch_size: 128
+      devices: [cuda:0]
     SchedulerNode:
       num: 1
     ReplayBufferNode:
       num: 1
     SamplerNode:
-      num: 2
+      num: 1
     OptimizerNode:
-      num: 2
+      num: 1
       update_interval: 3.0
-      devices: [cuda:1, cuda:0]
+      devices: [cuda:1]
 
 $test:
   # Testing special configuration (override)
@@ -89,6 +89,4 @@ $test:
       do_tick: False  # Required, prevent test steps to be counted in total steps
       optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
-      num: 1
-    VisualizerNode:
       num: 1

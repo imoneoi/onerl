@@ -8,40 +8,55 @@ $global:
     import: examples.envs.atari_env
     name: create_atari_env
     params:
-      name: Breakout
-    frame_stack: 4
+      name: MsPacman
+    frame_stack: 1
+    sample_frame_stack: 80
 
   # Algorithm
   algorithm:
     import: onerl.algorithms
-    name: DDQNAlgorithm
+    name: DDRQNAlgorithm
     network:  # Network architecture
       feature_extractor:
         import: onerl.networks
         name: ResnetEncoder
         params:
-          in_channels: 4
+          frame_stack: False
+
+          in_channels: 1
+          
+      recurrent:
+        import: onerl.networks
+        name: GRURecurrent
+        params:
+          input_dims: 64
+          hidden_dims: 256
+
       critic:
         import: onerl.networks
         name: MLP
         params:
+          frame_stack: False
+
           norm_type: none
-          input_dims: 64
+          input_dims: 256
           num_hidden: [256]
-          output_dims: 4
+          output_dims: 9
 
     params:  # Algorithm hyper-parameters
+      warmup_timesteps: 40  # Usually half of total BPTT timesteps
+
       replay_buffer_size: 1000000
 
-      lr: 0.0003
-      batch_size: 256
-      gamma: 0.99
+      lr: 0.0002
+      batch_size: 128
+      gamma: 0.997
 
-      target_update_freq: 50
+      target_update_freq: 20
 
       eps_start: 1.0
-      eps_final: 0.05
-      eps_final_steps: 1000000
+      eps_final: 0.1
+      eps_final_steps: 10000000
 
   nodes:  # Metric recording node here
     MetricNode:
@@ -49,6 +64,11 @@ $global:
 
 $train:
   # Training node configuration
+  env:
+    params:
+      clip_rewards: False
+      episode_life: False
+
   nodes:
     EnvNode:
       num: 32
@@ -73,6 +93,7 @@ $test:
     params:
       clip_rewards: False
       episode_life: False
+
   algorithm:
     params:
       eps_start: 0.005
@@ -90,5 +111,5 @@ $test:
       optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
       num: 1
-    VisualizerNode:
-      num: 1
+    # VisualizerNode:
+    #   num: 1

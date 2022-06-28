@@ -5,43 +5,48 @@ $global:
 
   # Environment
   env:
-    import: examples.envs.atari_env
-    name: create_atari_env
+    import: examples.envs.mujoco_env
+    name: create_mujoco_env
     params:
-      name: Breakout
-    frame_stack: 4
+      name: HalfCheetah-v3
+    frame_stack: 1
 
   # Algorithm
   algorithm:
     import: onerl.algorithms
-    name: DDQNAlgorithm
+    name: TD3Algorithm
     network:  # Network architecture
       feature_extractor:
-        import: onerl.networks
-        name: ResnetEncoder
-        params:
-          in_channels: 4
-      critic:
+        import: torch.nn
+        name: Flatten
+      actor:
         import: onerl.networks
         name: MLP
         params:
           norm_type: none
-          input_dims: 64
-          num_hidden: [256]
-          output_dims: 4
+          input_dims: 17  # N(state)
+          num_hidden: [256, 256]
+          output_dims: 6  # N(action)
+      critic1:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 23  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 1
+      critic2:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 23  # N(state) + N(action)
+          num_hidden: [256, 256]
+          output_dims: 1
 
     params:  # Algorithm hyper-parameters
       replay_buffer_size: 1000000
-
-      lr: 0.0003
       batch_size: 256
-      gamma: 0.99
-
-      target_update_freq: 50
-
-      eps_start: 1.0
-      eps_final: 0.05
-      eps_final_steps: 1000000
 
   nodes:  # Metric recording node here
     MetricNode:
@@ -49,11 +54,15 @@ $global:
 
 $train:
   # Training node configuration
+  env:
+    params:
+      sleep_time: 0.0025  # Sleep in envs to make sampling slower, keeping update-to-data ratio
+
   nodes:
     EnvNode:
-      num: 32
+      num: 1
     PolicyNode:
-      num: 16
+      num: 1
       batch_size: 1
       devices: [cpu]
     SchedulerNode:
@@ -61,23 +70,13 @@ $train:
     ReplayBufferNode:
       num: 1
     SamplerNode:
-      num: 2
+      num: 1
     OptimizerNode:
-      num: 2
-      update_interval: 3.0
-      devices: [cuda:1, cuda:0]
+      num: 1
+      update_interval: 0.1
+      devices: [cuda:0]
 
 $test:
-  # Testing special configuration (override)
-  env:
-    params:
-      clip_rewards: False
-      episode_life: False
-  algorithm:
-    params:
-      eps_start: 0.005
-      eps_final: 0.005
-
   # Testing node configuration
   nodes:
     EnvNode:
@@ -89,6 +88,4 @@ $test:
       do_tick: False  # Required, prevent test steps to be counted in total steps
       optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
-      num: 1
-    VisualizerNode:
       num: 1

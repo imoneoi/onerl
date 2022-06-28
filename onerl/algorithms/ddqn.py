@@ -39,8 +39,8 @@ class DDQNAlgorithm(Algorithm):
         assert self.eps_start >= self.eps_final, "DDQNAlgorithm: eps_start must be larger than eps_final."
         # target network
         self.target_iter = 0
-        self.target_network = nn.ModuleDict({k: deepcopy(v) for k, v in self.network.items()})
-        self.target_network.train()
+        self.target_critic = deepcopy(self.network["critic"])
+        self.target_critic.train()
         # optimizer
         self.optimizer = torch.optim.Adam(list(self.network["feature_extractor"].parameters()) +
                                           list(self.network["critic"].parameters()), lr=self.lr)
@@ -59,28 +59,31 @@ class DDQNAlgorithm(Algorithm):
             q = self.network["critic"](self.network["feature_extractor"](obs))
 
         # greedy actions
-        act_greedy = torch.argmax(q, dim=-1).cpu()
+        act_greedy = torch.argmax(q, dim=-1)
         # eps-greedy
         if ticks is None:  # no tick, using min eps
             eps = self.eps_final
         else:
             eps = self.eps_start - (self.eps_start - self.eps_final) * min(1.0, ticks / self.eps_final_steps)
-        is_rand = torch.rand(act_greedy.shape[0]) < eps
+
+        is_rand = torch.rand(act_greedy.shape[0], device=act_greedy.device) < eps
         return torch.where(is_rand, torch.randint(0, self.act_n, (act_greedy.shape[0], )), act_greedy)
 
     def sync_weight(self):
         self.target_iter += 1
         if (self.target_iter % self.target_update_freq) == 0:
-            for k, v in self.target_network.items():
-                v.load_state_dict(self.network[k].state_dict())
+            self.target_critic.load_state_dict(self.network["critic"].state_dict())
 
     def learn(self, batch: BatchCuda, ticks: int) -> dict:
         # TODO: WARNING: DistributedDataParallel enabled here
         # TODO: prioritized replay
         with torch.no_grad():
             next_obs = batch.data["obs"][:, 1:]
-            curr_next_q = self.network["critic"](self.network["feature_extractor"](next_obs))
-            target_next_q = self.target_network["critic"](self.target_network["feature_extractor"](next_obs))
+            next_obs_feature = self.network["feature_extractor"](next_obs)
+
+            curr_next_q = self.network["critic"](next_obs_feature)
+            target_next_q = self.target_critic(next_obs_feature)
+
             next_q = target_next_q[torch.arange(target_next_q.shape[0], device=target_next_q.device),
                                    torch.argmax(curr_next_q, dim=-1)]
             # update target

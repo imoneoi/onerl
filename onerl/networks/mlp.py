@@ -20,11 +20,14 @@ class MLP(nn.Module):
     """
     def __init__(self,
                  input_dims: int,
+                 frame_stack: bool = True,
+
                  output_dims: Optional[int] = None,
                  num_hidden: Optional[list] = None,
                  norm_type: str = "none",
                  groups: int = 16):
         super().__init__()
+        self.frame_stack = frame_stack
 
         layers = []
         # hidden
@@ -49,7 +52,7 @@ class MLP(nn.Module):
         else:
             x = inputs[0]
 
-        if len(x.shape) == 3:
+        if self.frame_stack and len(x.shape) == 3:
             # N FS C --> N FS*C
             x = x.view(x.shape[0], -1)
 

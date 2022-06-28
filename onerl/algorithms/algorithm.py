@@ -1,3 +1,4 @@
+from typing import Optional
 from collections import OrderedDict
 
 import torch
@@ -14,7 +15,13 @@ class Algorithm(nn.Module):
         self.network = nn.ModuleDict(network)
         self.env_params = env_params
 
-    def forward(self, obs: torch.Tensor, ticks: int) -> torch.Tensor:
+    def train(self, mode: bool = True):
+        return super().train(mode)
+
+    def recurrent_state(self):
+        return None
+
+    def forward(self, obs: torch.Tensor, ticks: int, rstate: Optional[torch.Tensor] = None) -> torch.Tensor:
         raise NotImplementedError("Algorithm: forward not implemented.")
 
     def learn(self, batch: BatchCuda, ticks: int) -> dict:

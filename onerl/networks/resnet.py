@@ -35,32 +35,37 @@ class PreactResBlock(nn.Module):
 class ResnetEncoder(nn.Module):
     def __init__(self,
                  in_channels: int,
-                 num_layers: int = 3,
-                 start_channels: int = 16,
+                 frame_stack: bool = True,
+                 # Network architecture
+                 # [2 * resblock(num_channels[0]), 2 * resblock(num_channels[1]), , ...]
+                 num_channels: int = [16, 32, 64],
                  norm_type: str = "batch_norm",
+                 # Group norm groups, only used in group_norm
                  groups: int = 8):
         super().__init__()
+        self.frame_stack = frame_stack
+
         # network architecture
         # initial conv
+        start_channels = num_channels[0]
         use_bias = norm_type == "none"
         layers = [
             nn.Conv2d(in_channels, start_channels, kernel_size=3, stride=1, padding=1, bias=use_bias),
             normalization_layer(start_channels, norm_type, groups)
         ]
         # res blocks
-        last_channels = num_channels = start_channels
-        for idx in range(num_layers):
-            layers.append(PreactResBlock(last_channels, num_channels, 2, norm_type, groups))
-            layers.append(PreactResBlock(num_channels, num_channels, 1, norm_type, groups))
-            last_channels = num_channels
-            num_channels *= 2
+        last_channels = start_channels
+        for channels in num_channels:
+            layers.append(PreactResBlock(last_channels, channels, 2, norm_type, groups))
+            layers.append(PreactResBlock(channels, channels, 1, norm_type, groups))
+            last_channels = channels
 
         self.layers = nn.Sequential(*layers)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
     def forward(self, x):
-        # reshape N FS C H W --> N C*FS H W
-        if len(x.shape) == 5:
+        if self.frame_stack:
+            # frame stack, reshape N FS C H W --> N C*FS H W
             x = x.view(x.shape[0], -1, x.shape[-2], x.shape[-1])
         # uint8 --> float
         if x.dtype is torch.uint8:

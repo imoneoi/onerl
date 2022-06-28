@@ -140,6 +140,10 @@ class EnvNode(Node):
                 self.setstate("reset")
                 obs = env.reset()
 
+                # clear rstate
+                # if shared_rstate is not None:
+                #     shared_rstate[...] = 0
+
                 self.log_metric({"{}@episode_reward".format(self.node_ns): tot_reward})
                 tot_reward = 0
 
