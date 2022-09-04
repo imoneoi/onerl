@@ -3,8 +3,6 @@ import ctypes
 import time
 import os
 
-import wandb
-
 from onerl.nodes.node import Node
 
 
@@ -43,6 +41,8 @@ class MetricNode(Node):
             return obj.__repr__()
 
     def run(self):
+        import wandb
+
         # shared objs
         shared_lock = self.objects["lock"]
         shared_tick = self.objects["tick"]

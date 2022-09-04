@@ -38,6 +38,9 @@ def preprocess_ns_config(ns_config: dict):
 
 
 def launch_nodes(yaml_config: dict):
+    # use spawn method
+    mp.set_start_method("fork")
+
     # preprocess global
     global_ns = yaml_config.get("$global", {}).copy()
     preprocess_ns_config(global_ns)

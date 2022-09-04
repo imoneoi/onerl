@@ -9,6 +9,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
 
 from onerl.utils.import_module import get_class_from_str
+from onerl.utils.find_free_port import find_free_port
 from onerl.utils.shared_state_dict import SharedStateDict
 from onerl.utils.batch.cuda import BatchCuda
 from onerl.nodes.node import Node
@@ -56,7 +57,7 @@ class OptimizerNode(Node):
             # setup DDP
             # FIXME: Single machine multi-GPU setting
             os.environ["MASTER_ADDR"] = "localhost"
-            os.environ["MASTER_PORT"] = self.config.get("port", "12355")
+            os.environ["MASTER_PORT"] = str(find_free_port())
 
             # GLOO for CPU training, NCCL for GPU training
             # https://pytorch.org/docs/stable/distributed.html

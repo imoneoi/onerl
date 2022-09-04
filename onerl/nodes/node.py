@@ -1,10 +1,12 @@
 import multiprocessing as mp
+from socket import timeout
 import time
 import os
 
 import torch
 
 from faster_fifo import Queue
+import faster_fifo_reduction
 
 import setproctitle
 
@@ -95,10 +97,10 @@ class Node:
         self.global_objects[target_name]["queue"].put(msg)
 
     def recv(self):
-        return self.queue.get()
+        return self.queue.get(timeout=180)
 
     def recv_all(self):
-        return self.queue.get_many()
+        return self.queue.get_many(timeout=180)
 
     def available(self):
         return not self.queue.empty()

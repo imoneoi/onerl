@@ -16,7 +16,7 @@ class SharedArray:
     def pin_memory_(self, device):
         with torch.cuda.device(device):
             result = torch.cuda.cudart().cudaHostRegister(self.tensor.data_ptr(), self.tensor.numel() * self.tensor.element_size(), 0)
-            assert result.value == 0, "Failed to pin memory."
+            # assert result.value == 0, "Failed to pin memory."
 
         assert self.tensor.is_pinned()
 
