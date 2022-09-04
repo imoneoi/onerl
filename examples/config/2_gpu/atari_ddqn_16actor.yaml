@@ -66,8 +66,8 @@ $train:
       num: 2
       update_interval: 3.0
       devices: [cuda:1, cuda:0]
-    VisualizerNode:
-      num: 1
+    # VisualizerNode:
+    #   num: 1
 
 $test:
   # Testing special configuration (override)
@@ -92,5 +92,5 @@ $test:
       optimizer_namespace: $train  # Required, specify where to load parameters
     SchedulerNode:
       num: 1
-    VisualizerNode:
-      num: 1
+    # VisualizerNode:
+    #   num: 1

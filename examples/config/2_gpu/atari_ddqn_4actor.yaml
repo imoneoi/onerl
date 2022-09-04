@@ -1,0 +1,96 @@
+$global:
+  # Profiling
+  # profile: True
+  # profile_log_path: profile_log
+
+  # Environment
+  env:
+    import: examples.envs.atari_env
+    name: create_atari_env
+    params:
+      name: Breakout
+    frame_stack: 4
+
+  # Algorithm
+  algorithm:
+    import: onerl.algorithms
+    name: DDQNAlgorithm
+    network:  # Network architecture
+      feature_extractor:
+        import: onerl.networks
+        name: ResnetEncoder
+        params:
+          in_channels: 4
+      critic:
+        import: onerl.networks
+        name: MLP
+        params:
+          norm_type: none
+          input_dims: 64
+          num_hidden: [256]
+          output_dims: 4
+
+    params:  # Algorithm hyper-parameters
+      replay_buffer_size: 1000000
+
+      lr: 0.0003
+      batch_size: 256
+      gamma: 0.99
+
+      target_update_freq: 50
+
+      eps_start: 1.0
+      eps_final: 0.05
+      eps_final_steps: 1000000
+
+  nodes:  # Metric recording node here
+    MetricNode:
+      num: 1
+
+$train:
+  # Training node configuration
+  nodes:
+    EnvNode:
+      num: 8
+    PolicyNode:
+      num: 4
+      batch_size: 1
+      devices: [cpu]
+    SchedulerNode:
+      num: 1
+    ReplayBufferNode:
+      num: 1
+    SamplerNode:
+      num: 2
+    OptimizerNode:
+      num: 2
+      update_interval: 3.0
+      devices: [cuda:1, cuda:0]
+    # VisualizerNode:
+    #   num: 1
+
+$test:
+  # Testing special configuration (override)
+  env:
+    params:
+      clip_rewards: False
+      episode_life: False
+  algorithm:
+    params:
+      eps_start: 0.005
+      eps_final: 0.005
+
+  # Testing node configuration
+  nodes:
+    EnvNode:
+      num: 1
+    PolicyNode:
+      num: 1
+      batch_size: 1
+      devices: [cpu]
+      do_tick: False  # Required, prevent test steps to be counted in total steps
+      optimizer_namespace: $train  # Required, specify where to load parameters
+    SchedulerNode:
+      num: 1
+    # VisualizerNode:
+    #   num: 1
