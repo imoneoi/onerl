@@ -1,5 +1,5 @@
 # OneRL
-Event-driven fully distributed reinforcement learning framework proposed in "A Versatile and Efficient Reinforcement Learning Framework for Autonomous Driving" (https://arxiv.org/abs/2110.11573)
+Event-driven fully distributed reinforcement learning framework proposed in "A Versatile and Efficient Reinforcement Learning Approach for Autonomous Driving" (https://arxiv.org/abs/2110.11573)
 
 - Super fast RL training! (15~30min for MuJoCo & Atari on single machine)
 - State-of-the-art performance
