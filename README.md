@@ -137,4 +137,13 @@ In action:
 
 ![](./docs/assets/lockfree-buffer.drawio.png)
 
-## Acknowledegments
+## Citation
+```
+@inproceedings{
+  wang2022a,
+  title={When to Trust Your Simulator: Dynamics-Aware Hybrid Offline-and-Online Reinforcement Learning},
+  author={Guan Wang and Haoyi Niu and Desheng Zhu and Jianming Hu and Xianyuan Zhan and Guyue Zhou},
+  booktitle={NeurIPS 2022 Machine Learning for Autonomous Driving Workshop},
+  year={2022}
+}
+```
