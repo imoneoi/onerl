@@ -143,7 +143,7 @@ In action:
   wang2022a,
   title={A Versatile and Efficient Reinforcement Learning Approach for Autonomous Driving},
   author={Guan Wang and Haoyi Niu and Desheng Zhu and Jianming Hu and Xianyuan Zhan and Guyue Zhou},
-  booktitle={NeurIPS 2022 Machine Learning for Autonomous Driving Workshop},
+  booktitle={NeurIPS 2022 Reinforcement Learning for Real Life Workshop},
   year={2022}
 }
 ```
