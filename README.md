@@ -141,7 +141,7 @@ In action:
 ```
 @inproceedings{
   wang2022a,
-  title={When to Trust Your Simulator: Dynamics-Aware Hybrid Offline-and-Online Reinforcement Learning},
+  title={A Versatile and Efficient Reinforcement Learning Approach for Autonomous Driving},
   author={Guan Wang and Haoyi Niu and Desheng Zhu and Jianming Hu and Xianyuan Zhan and Guyue Zhou},
   booktitle={NeurIPS 2022 Machine Learning for Autonomous Driving Workshop},
   year={2022}
