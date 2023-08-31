@@ -9,7 +9,7 @@ from torch.distributions import Independent, Normal
 
 from onerl.algorithms.algorithm import Algorithm
 from onerl.utils.batch.cuda import BatchCuda
-
+import ipdb
 
 class SACAlgorithm(Algorithm):
     SIGMA_MIN = -20
@@ -112,6 +112,8 @@ class SACAlgorithm(Algorithm):
             # in appendix C to get some understanding of this equation.
             log_prob = log_prob - torch.log((1 - squashed_act ** 2) + self.__eps).sum(-1)
             return squashed_act, log_prob
+        
+        ipdb.set_trace()
 
         return squashed_act
 
