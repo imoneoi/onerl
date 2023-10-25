@@ -138,6 +138,7 @@ In action:
 ![](./docs/assets/lockfree-buffer.drawio.png)
 
 ## Citation
+If you are using OneRL training framework for your project development, please cite the following paper:
 ```
 @inproceedings{
   wang2022a,
